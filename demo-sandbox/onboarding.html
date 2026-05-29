@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSharpCache — Onboarding</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --warn: #d29922;
+    --danger: #f85149;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --code-bg: #0d1117;
+    --radius: 8px;
+    font-size: 15px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: .6rem 1.5rem;
+    display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+  }
+  nav a { color: var(--muted); text-decoration: none; font-size: .85rem; transition: color .15s; }
+  nav a:hover { color: var(--accent); }
+  nav .brand { color: var(--accent); font-weight: 700; margin-right: .5rem; font-size: .9rem; }
+
+  /* SECTIONS */
+  section {
+    margin-top: 3.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  section:first-of-type { border-top: none; margin-top: 2rem; }
+
+  .section-num {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size: .7rem;
+    border-radius: 4px;
+    padding: 1px 7px;
+    margin-right: .5rem;
+    vertical-align: middle;
+  }
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  p { margin-bottom: .8rem; color: var(--text); }
+  p:last-child { margin-bottom: 0; }
+
+  /* PITCH CARDS */
+  .pitch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .pitch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+  }
+  .pitch-card .icon { font-size: 1.4rem; margin-bottom: .4rem; }
+  .pitch-card .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .pitch-card .val { font-size: .95rem; font-weight: 600; color: var(--text); margin-top: .2rem; }
+
+  /* SVG DIAGRAM */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 1rem;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    margin-top: 1rem;
+  }
+
+  /* FILE LIST */
+  .file-list { list-style: none; margin-top: .8rem; display: flex; flex-direction: column; gap: .6rem; }
+  .file-list li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .8rem 1.1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+  }
+  .file-list .num {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size: .75rem;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .file-list .path { font-family: "SF Mono", Consolas, monospace; font-size: .85rem; color: var(--accent); }
+  .file-list .desc { font-size: .88rem; color: var(--muted); margin-top: .15rem; }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    padding: 1.2rem 1.4rem;
+    margin-top: 1rem;
+    font-family: "SF Mono", Consolas, "Courier New", monospace;
+    font-size: .82rem;
+    line-height: 1.7;
+    tab-size: 4;
+  }
+  .hi   { background: rgba(88,166,255,.13); border-left: 3px solid var(--accent); display: block; margin-left: -1.4rem; padding-left: calc(1.4rem - 3px); }
+  .warn-line { background: rgba(210,153,34,.12); border-left: 3px solid var(--warn); display: block; margin-left: -1.4rem; padding-left: calc(1.4rem - 3px); }
+  .kw   { color: #ff7b72; }
+  .ty   { color: #79c0ff; }
+  .fn   { color: #d2a8ff; }
+  .lit  { color: #a5d6ff; }
+  .cm   { color: #8b949e; font-style: italic; }
+  .str  { color: #a5d6ff; }
+  .ann  { color: var(--accent2); font-size: .78rem; }
+
+  /* ANNOTATION TABLE */
+  .annotation-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: .85rem; }
+  .annotation-table th {
+    background: var(--surface2);
+    text-align: left;
+    padding: .5rem .8rem;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-bottom: 1px solid var(--border);
+  }
+  .annotation-table td {
+    padding: .55rem .8rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .annotation-table tr:last-child td { border-bottom: none; }
+  .annotation-table tr:hover td { background: var(--surface2); }
+  .annotation-table .line-ref { font-family: monospace; color: var(--accent); font-size: .8rem; }
+
+  /* GOTCHAS */
+  .gotcha {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--warn);
+    border-radius: var(--radius);
+    padding: .9rem 1.1rem;
+    margin-bottom: .8rem;
+  }
+  .gotcha .title {
+    font-weight: 700;
+    font-size: .9rem;
+    color: var(--warn);
+    margin-bottom: .3rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .gotcha .body { font-size: .88rem; color: var(--text); }
+  .gotcha code { background: var(--code-bg); border-radius: 3px; padding: 1px 5px; font-family: monospace; font-size: .82rem; color: var(--accent); }
+
+  /* CHEATSHEET */
+  .cheat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .cheat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+  }
+  .cheat-card h3 { font-size: .88rem; color: var(--accent2); margin-bottom: .6rem; text-transform: uppercase; letter-spacing: .07em; }
+  .cheat-card pre { margin-top: 0; font-size: .78rem; padding: .8rem 1rem; }
+
+  code { font-family: "SF Mono", Consolas, monospace; font-size: .85em; background: var(--code-bg); border-radius: 3px; padding: 1px 5px; color: var(--accent); }
+  a { color: var(--accent); }
+
+  .badge {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: .4rem;
+  }
+  .badge-blue { background: rgba(88,166,255,.18); color: var(--accent); border: 1px solid rgba(88,166,255,.3); }
+  .badge-green { background: rgba(63,185,80,.18); color: var(--accent2); border: 1px solid rgba(63,185,80,.3); }
+  .badge-warn  { background: rgba(210,153,34,.18); color: var(--warn);    border: 1px solid rgba(210,153,34,.3); }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">⚡ CSharpCache</span>
+  <a href="#pitch">Pitch</a>
+  <a href="#arch">Architecture</a>
+  <a href="#files">Start Here</a>
+  <a href="#method">Key Method</a>
+  <a href="#gotchas">Gotchas</a>
+  <a href="#cheatsheet">Run &amp; Extend</a>
+</nav>
+
+<div class="page">
+
+<!-- ─── 1. ELEVATOR PITCH ──────────────────────────────────────────── -->
+<section id="pitch">
+  <h2><span class="section-num">1</span> 60-Second Pitch</h2>
+  <p>
+    <strong>CSharpCache</strong> is a from-scratch, in-process TTL cache for .NET 10, built to understand cache internals deeply — not to ship to prod (yet). It stores arbitrary values keyed by <code>string</code>, expires them by absolute or sliding TTL measured in <strong>Stopwatch.Frequency ticks</strong> (not wall-clock <code>DateTime</code>), and cleans up expired entries on a background sweep timer.
+  </p>
+  <p>
+    All mutation is lock-free via <code>ConcurrentDictionary</code> + <code>Interlocked</code>. The interface is dead simple: <code>Set</code> / <code>TryGet</code> / <code>Remove</code>. A metrics snapshot gives you hits, misses, hit-rate, and expiry counts for free.
+  </p>
+  <div class="pitch-grid">
+    <div class="pitch-card"><div class="icon">🔑</div><div class="label">Key type</div><div class="val">string (non-null)</div></div>
+    <div class="pitch-card"><div class="icon">⏱️</div><div class="label">TTL modes</div><div class="val">Absolute &amp; Sliding</div></div>
+    <div class="pitch-card"><div class="icon">🔒</div><div class="label">Thread safety</div><div class="val">Lock-free (Interlocked)</div></div>
+    <div class="pitch-card"><div class="icon">🧹</div><div class="label">Eviction</div><div class="val">Background sweep timer</div></div>
+    <div class="pitch-card"><div class="icon">📊</div><div class="label">Observability</div><div class="val">CacheMetricsSnapshot</div></div>
+    <div class="pitch-card"><div class="icon">🚀</div><div class="label">Runtime</div><div class="val">.NET 10 / C# 14</div></div>
+  </div>
+</section>
+
+<!-- ─── 2. ARCHITECTURE ────────────────────────────────────────────── -->
+<section id="arch">
+  <h2><span class="section-num">2</span> Architecture Diagram</h2>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 820 340" width="820" height="340" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-muted" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#8b949e"/>
+        </marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+        </marker>
+      </defs>
+
+      <!-- CLIENT -->
+      <rect x="20" y="130" width="130" height="80" rx="8" fill="#1c2333" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="85" y="165" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="600">Client</text>
+      <text x="85" y="183" text-anchor="middle" fill="#8b949e" font-size="11">Runner.cs</text>
+      <text x="85" y="199" text-anchor="middle" fill="#8b949e" font-size="11">Program.cs</text>
+
+      <!-- IFACE -->
+      <rect x="220" y="120" width="150" height="100" rx="8" fill="#1c2333" stroke="#30363d" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="295" y="160" text-anchor="middle" fill="#8b949e" font-size="11" font-style="italic">«interface»</text>
+      <text x="295" y="178" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="600">ICache&lt;TKey,TVal&gt;</text>
+      <text x="295" y="196" text-anchor="middle" fill="#8b949e" font-size="10">Cache.Core</text>
+
+      <!-- TTLCACHE -->
+      <rect x="450" y="80" width="180" height="180" rx="8" fill="#1c2333" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="540" y="116" text-anchor="middle" fill="#79c0ff" font-size="11" font-weight="600">TtlCache&lt;TValue&gt;</text>
+      <text x="540" y="134" text-anchor="middle" fill="#8b949e" font-size="10">Cache.Adapters.Memory</text>
+      <line x1="460" y1="145" x2="620" y2="145" stroke="#30363d" stroke-width="1"/>
+      <text x="540" y="162" text-anchor="middle" fill="#8b949e" font-size="10">ConcurrentDictionary</text>
+      <text x="540" y="178" text-anchor="middle" fill="#8b949e" font-size="10">&lt;string, CacheItem&gt;</text>
+      <line x1="460" y1="192" x2="620" y2="192" stroke="#30363d" stroke-width="1"/>
+      <text x="540" y="209" text-anchor="middle" fill="#8b949e" font-size="10">Timer (sweep)</text>
+      <text x="540" y="225" text-anchor="middle" fill="#8b949e" font-size="10">Interlocked metrics</text>
+      <text x="540" y="241" text-anchor="middle" fill="#8b949e" font-size="10">Stopwatch ticks</text>
+
+      <!-- SWEEP LOOP -->
+      <rect x="680" y="200" width="120" height="60" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="740" y="228" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">Sweep Timer</text>
+      <text x="740" y="245" text-anchor="middle" fill="#8b949e" font-size="10">every N ms</text>
+
+      <!-- METRICS -->
+      <rect x="680" y="80" width="120" height="80" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="740" y="112" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">Metrics</text>
+      <text x="740" y="128" text-anchor="middle" fill="#8b949e" font-size="10">hits / misses</text>
+      <text x="740" y="144" text-anchor="middle" fill="#8b949e" font-size="10">hitRate / expired</text>
+
+      <!-- ARROWS: client → iface -->
+      <line x1="150" y1="170" x2="217" y2="170" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="183" y="163" text-anchor="middle" fill="#8b949e" font-size="10">Set/TryGet</text>
+
+      <!-- iface → ttlcache -->
+      <line x1="370" y1="170" x2="447" y2="170" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="408" y="163" text-anchor="middle" fill="#8b949e" font-size="10">implements</text>
+
+      <!-- ttlcache → metrics -->
+      <line x1="630" y1="130" x2="677" y2="128" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-green)"/>
+      <text x="653" y="120" text-anchor="middle" fill="#8b949e" font-size="9">Interlocked</text>
+
+      <!-- ttlcache → sweep -->
+      <line x1="630" y1="220" x2="677" y2="228" stroke="#d29922" stroke-width="1.5" marker-end="url(#arr-muted)"/>
+      <text x="654" y="215" text-anchor="middle" fill="#8b949e" font-size="9">fires</text>
+
+      <!-- sweep back to ttlcache (loop arrow) -->
+      <path d="M 740 200 C 740 170, 640 155, 630 175" stroke="#d29922" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+      <text x="700" y="174" text-anchor="middle" fill="#d29922" font-size="9">evicts expired</text>
+
+      <!-- LEGEND -->
+      <rect x="20" y="270" width="10" height="10" rx="2" fill="none" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="36" y="280" fill="#8b949e" font-size="10">hot path</text>
+      <rect x="90" y="270" width="10" height="10" rx="2" fill="none" stroke="#d29922" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="106" y="280" fill="#8b949e" font-size="10">background</text>
+      <rect x="185" y="270" width="10" height="10" rx="2" fill="none" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="201" y="280" fill="#8b949e" font-size="10">metrics</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ─── 3. READ THESE 3 FILES FIRST ───────────────────────────────── -->
+<section id="files">
+  <h2><span class="section-num">3</span> Read These 3 Files First</h2>
+  <ul class="file-list">
+    <li>
+      <div class="num">1</div>
+      <div>
+        <div class="path">Cache.Core/ICache.cs <span class="badge badge-blue">~17 lines</span></div>
+        <div class="desc">The contract. Every caller uses <em>only</em> this interface. Establishes that all implementations must be thread-safe, that <code>TKey</code> is non-null, and that expired entries are treated as misses on <code>TryGet</code>.</div>
+      </div>
+    </li>
+    <li>
+      <div class="num">2</div>
+      <div>
+        <div class="path">Cache.Adapters.Memory/TtlCache.cs <span class="badge badge-blue">~180 lines</span></div>
+        <div class="desc">The only implementation. Everything interesting lives here: TTL calculation in Stopwatch ticks, sliding-window refresh logic in <code>TryGet</code>, the non-reentrant sweep latch, and the metrics counters. Start at <code>Set</code> (L71) → <code>TryGet</code> (L99) → <code>SweepExpiredEntriesSafely</code> (L132).</div>
+      </div>
+    </li>
+    <li>
+      <div class="num">3</div>
+      <div>
+        <div class="path">Cache.Tests/TtlCacheTests.cs <span class="badge badge-blue">~150 lines</span></div>
+        <div class="desc">The behaviour spec. Covers hit/miss, expiry, sliding cap, sweep idempotency, and metrics. Read the tests as a truth table before touching any TTL math — they define what "correct" means here.</div>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ─── 4. ANNOTATED KEY METHOD ────────────────────────────────────── -->
+<section id="method">
+  <h2><span class="section-num">4</span> Annotated — <code>TryGet</code> <span class="badge badge-blue">TtlCache.cs:99</span></h2>
+  <p>This is the hot path. It handles miss detection, sliding-window refresh, and hit counting — all without a lock.</p>
+<pre><span class="kw">public</span> <span class="kw">bool</span> <span class="fn">TryGet</span>(<span class="ty">string</span> key, <span class="kw">out</span> <span class="ty">TValue</span> value) {
+    <span class="ty">ArgumentNullException</span>.<span class="fn">ThrowIfNull</span>(key);
+
+    <span class="hi"><span class="kw">var</span> cacheHit = _store.<span class="fn">TryGetValue</span>(key, <span class="kw">out</span> <span class="kw">var</span> cacheEntry);</span>
+    <span class="kw">var</span> timeNowTicks = <span class="ty">Stopwatch</span>.<span class="fn">GetTimestamp</span>(); <span class="cm">// high-res, monotonic</span>
+
+    <span class="hi"><span class="kw">if</span> (!cacheHit || cacheEntry.DeadlineTicks &lt;= timeNowTicks) {</span>
+        <span class="cm">// Miss: not found OR found-but-expired → treat as miss</span>
+        <span class="ty">Interlocked</span>.<span class="fn">Increment</span>(<span class="kw">ref</span> _misses);
+        value = <span class="kw">default</span>!;
+        <span class="kw">return</span> <span class="lit">false</span>;
+    }
+
+    <span class="ty">Interlocked</span>.<span class="fn">Increment</span>(<span class="kw">ref</span> _hits); <span class="cm">// only incremented on live hit</span>
+
+    <span class="warn-line"><span class="kw">var</span> remaining = cacheEntry.DeadlineTicks - timeNowTicks;</span>
+    <span class="warn-line"><span class="kw">if</span> (remaining &lt;= cacheEntry.SlidingWindowTicks / <span class="lit">3</span>) {</span>
+        <span class="cm">// ⚠ Refresh only when &lt; 1/3 of the sliding window remains</span>
+        <span class="cm">// Not on every read — intentional batching to avoid CAS storms</span>
+        <span class="kw">var</span> refresh = timeNowTicks + cacheEntry.SlidingWindowTicks;
+        <span class="warn-line"><span class="kw">var</span> newDeadlineTicks = cacheEntry.AbsoluteCapTicks &gt; <span class="lit">0</span></span>
+            <span class="warn-line">    ? <span class="ty">Math</span>.<span class="fn">Min</span>(refresh, cacheEntry.AbsoluteCapTicks)</span>
+            <span class="warn-line">    : refresh; <span class="cm">// AbsoluteCapTicks==0 means no absolute cap</span></span>
+
+        <span class="kw">if</span> (newDeadlineTicks &gt; cacheEntry.DeadlineTicks) {
+            <span class="kw">var</span> newEntry = <span class="kw">new</span> <span class="ty">CacheItem</span>&lt;<span class="ty">TValue</span>&gt;(
+                cacheEntry.Value, newDeadlineTicks,
+                cacheEntry.SlidingWindowTicks, cacheEntry.AbsoluteCapTicks);
+            <span class="hi">_store.<span class="fn">TryUpdate</span>(key, newEntry, cacheEntry); <span class="cm">// CAS — safe to lose race</span></span>
+        }
+    }
+
+    value = cacheEntry.Value;
+    <span class="kw">return</span> <span class="lit">true</span>;
+}</pre>
+
+  <table class="annotation-table">
+    <thead><tr><th>Line</th><th>What's happening</th></tr></thead>
+    <tbody>
+      <tr><td class="line-ref">TryGetValue</td><td>Single dict lookup — no lock, ConcurrentDictionary segment-level read.</td></tr>
+      <tr><td class="line-ref">DeadlineTicks ≤ now</td><td>Expired entries are NOT removed here. They linger until the sweep timer fires. <code>TryGet</code> just declares them dead.</td></tr>
+      <tr><td class="line-ref">remaining ≤ window/3</td><td>Lazy-refresh threshold. Only the last third of a sliding window triggers a deadline extension. Prevents every hot-path read from doing a CAS write.</td></tr>
+      <tr><td class="line-ref">AbsoluteCapTicks > 0</td><td>Sliding TTL is always clamped to the original absolute deadline. When <code>SlidingTtl</code> is not set, <code>AbsoluteCapTicks</code> is the same as <code>DeadlineTicks</code> — no confusion.</td></tr>
+      <tr><td class="line-ref">TryUpdate (CAS)</td><td>Compare-and-swap on the struct. If another thread refreshed first, this silently fails — correct, because the deadline is already extended.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 5. GOTCHAS ─────────────────────────────────────────────────── -->
+<section id="gotchas">
+  <h2><span class="section-num">5</span> Gotchas <span class="badge badge-warn">read before touching TTL math</span></h2>
+
+  <div class="gotcha">
+    <div class="title">⚠ Sliding refresh is lazy, not eager</div>
+    <div class="body">
+      Deadline extension only triggers when <code>remaining ≤ SlidingWindowTicks / 3</code>.
+      A key with a 30 s sliding window accessed 1 s after <code>Set</code> will <em>not</em> refresh — it refreshes only in the final 10 s.
+      Don't expect "touch = full reset".
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ Sweep timer fires immediately at construction</div>
+    <div class="body">
+      <code>new Timer(..., TimeSpan.Zero, sweepInterval)</code> — the first sweep runs on construction, before any entries exist. Harmless, but surprising in tests if you're watching the sweep count.
+      Tests disable this by passing <code>sweepInterval: TimeSpan.FromHours(1)</code> and calling <code>SweepExpiredEntries()</code> manually.
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ <code>Count</code> includes stale (not-yet-swept) entries</div>
+    <div class="body">
+      <code>Count</code> is <code>_store.Count</code> — it counts all entries including expired ones that haven't been swept yet.
+      After expiry but before sweep, <code>Count</code> is inflated. Use it for capacity estimates, not exact live-entry counts.
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ TTL uses Stopwatch ticks, not DateTime ticks</div>
+    <div class="body">
+      <code>Stopwatch.Frequency</code> ticks ≠ <code>TimeSpan.Ticks</code> (10M/s).
+      The conversion: <code>(long)Math.Ceiling(ttl.TotalSeconds * Stopwatch.Frequency)</code>.
+      Never mix the two. This also means TTL is monotonic and unaffected by clock adjustments.
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ <code>AbsoluteCapTicks == 0</code> means "no separate absolute cap"</div>
+    <div class="body">
+      When only <code>AbsoluteTtl</code> is set (no <code>SlidingTtl</code>), <code>AbsoluteCapTicks</code> is set but <code>SlidingWindowTicks</code> is 0 — the sliding refresh branch is never entered.
+      When both are set, <code>AbsoluteCapTicks</code> acts as the hard ceiling. The check <code>AbsoluteCapTicks > 0</code> in <code>TryGet</code> guards this.
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ Double-Dispose in Runner.cs</div>
+    <div class="body">
+      <code>Runner.cs</code> calls <code>cache.Dispose()</code> both after <code>Task.WhenAll</code> and in <code>finally</code>.
+      <code>TtlCache.Dispose</code> doesn't guard against double-dispose — the second call on an already-disposed <code>Timer</code> throws.
+      Known issue; fix by adding an <code>_disposed</code> flag or using <code>using</code>.
+    </div>
+  </div>
+
+  <div class="gotcha">
+    <div class="title">⚠ Sweep latch prevents re-entrancy, not concurrency with Set/TryGet</div>
+    <div class="body">
+      <code>_sweepRunning</code> only blocks a second <em>sweep</em> from overlapping itself (timer firing while previous sweep is still running).
+      Set/TryGet run concurrently with sweep at all times — that's fine because <code>ConcurrentDictionary.TryRemove</code> is safe, but be aware the sweep can delete an entry a <code>TryGet</code> is mid-read.
+    </div>
+  </div>
+</section>
+
+<!-- ─── 6. CHEATSHEET ──────────────────────────────────────────────── -->
+<section id="cheatsheet">
+  <h2><span class="section-num">6</span> Run &amp; Extend Cheatsheet</h2>
+  <div class="cheat-grid">
+
+    <div class="cheat-card">
+      <h3>Run tests</h3>
+<pre>cd CSharpCache
+dotnet test Cache.Tests/</pre>
+    </div>
+
+    <div class="cheat-card">
+      <h3>Run sandbox (load driver)</h3>
+<pre>cd CSharpCache/Cache.Sandbox
+dotnet run
+# Edit appsettings.json to tune:
+# Concurrency, ReadPercent,
+# Keyspace, Distribution, Seed</pre>
+    </div>
+
+    <div class="cheat-card">
+      <h3>Hotset workload</h3>
+<pre><span class="cm">// appsettings.json</span>
+{
+  "Distribution": "hotset",
+  "HotsetFraction": 0.2,
+  "HotsetProbability": 0.8
+}</pre>
+    </div>
+
+    <div class="cheat-card">
+      <h3>Add a new cache adapter</h3>
+<pre><span class="cm">// 1. New project: Cache.Adapters.Lru</span>
+<span class="cm">// 2. Implement ICache&lt;string, TValue&gt;</span>
+<span class="cm">// 3. Register in Program.cs switch:</span>
+"lru" => new LruCache&lt;byte[]&gt;(...)
+</pre>
+    </div>
+
+    <div class="cheat-card">
+      <h3>Test a new TTL scenario</h3>
+<pre><span class="cm">// Tests disable sweep — call manually</span>
+<span class="kw">var</span> cache = <span class="kw">new</span> <span class="ty">TtlCache</span>&lt;<span class="ty">string</span>&gt;(
+    defaultTtl: <span class="ty">LongTtl</span>,
+    sweepInterval: <span class="ty">TimeSpan</span>.<span class="fn">FromHours</span>(1));
+<span class="cm">// ... set entries ...</span>
+await <span class="fn">DelayBeyond</span>(ShortTtl);
+cache.<span class="fn">SweepExpiredEntries</span>(); <span class="cm">// manual</span></pre>
+    </div>
+
+    <div class="cheat-card">
+      <h3>Read metrics</h3>
+<pre><span class="kw">var</span> m = ttlCache.<span class="fn">GetMetricsSnapshot</span>();
+Console.<span class="fn">WriteLine</span>(
+  $<span class="str">"hitRate={m.HitRate:P1} "</span> +
+  $<span class="str">"count={m.Count} "</span> +
+  $<span class="str">"expired={m.ExpiredRemovals}"</span>);</pre>
+    </div>
+
+  </div>
+
+  <p style="margin-top:1.5rem; color: var(--muted); font-size:.85rem;">
+    🗺 <strong>Next steps from Readme:</strong> LRU eviction policy · W-TinyLFU · benchmarking with BenchmarkDotNet · OpenTelemetry metrics export · lock striping · distributed cache / consistent hashing.
+  </p>
+</section>
+
+</div>
+</body>
+</html>

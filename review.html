@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Review · f01471e</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:        #0a0b0e;
+      --bg2:       #0f1014;
+      --bg3:       #14151b;
+      --bg4:       #191b22;
+      --border:    #1f2130;
+      --border2:   #2a2d3e;
+      --muted:     #3d4157;
+      --dim:       #5c6280;
+      --text:      #c4c9dc;
+      --bright:    #e8ecf5;
+      --gold:      #c9965a;
+      --gold-soft: #8a6035;
+
+      --high:      #e05555;
+      --high-bg:   rgba(224,85,85,.08);
+      --high-bdr:  rgba(224,85,85,.22);
+      --high-glow: rgba(224,85,85,.18);
+
+      --med:       #d4922a;
+      --med-bg:    rgba(212,146,42,.08);
+      --med-bdr:   rgba(212,146,42,.22);
+      --med-glow:  rgba(212,146,42,.18);
+
+      --low:       #5b8fd4;
+      --low-bg:    rgba(91,143,212,.08);
+      --low-bdr:   rgba(91,143,212,.22);
+      --low-glow:  rgba(91,143,212,.18);
+
+      --nice:      #3dab7e;
+      --nice-bg:   rgba(61,171,126,.08);
+      --nice-bdr:  rgba(61,171,126,.22);
+      --nice-glow: rgba(61,171,126,.18);
+
+      --add-bg:  rgba(61,171,126,.055);
+      --del-bg:  rgba(224,85,85,.055);
+      --lno-add: rgba(61,171,126,.22);
+      --lno-del: rgba(224,85,85,.20);
+      --lno-ctx: #0d0e13;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 15px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    /* ─── STICKY NAV ─────────────────────────────────── */
+    .topnav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,11,14,.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      height: 44px; overflow-x: auto; scrollbar-width: none;
+    }
+    .topnav-inner::-webkit-scrollbar { display: none; }
+    .topnav-sep { color: var(--muted); font-size: 0.7rem; flex-shrink: 0; }
+    .nav-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.69rem; color: var(--dim);
+      text-decoration: none; padding: 0.25em 0.65em;
+      border-radius: 4px; border: 1px solid transparent;
+      white-space: nowrap; flex-shrink: 0;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    .nav-link:hover { color: var(--bright); border-color: var(--border2); background: var(--bg3); }
+    .nav-link.h  { color: var(--high); }
+    .nav-link.m  { color: var(--med); }
+    .nav-link.act { color: var(--gold); border-color: var(--gold-soft); }
+
+    /* ─── PAGE HEADER ────────────────────────────────── */
+    .hero {
+      border-bottom: 1px solid var(--border);
+      padding: 4rem 0 2.5rem;
+      background: radial-gradient(ellipse 60% 50% at 80% 50%, rgba(201,150,90,.04) 0%, transparent 70%),
+                  linear-gradient(180deg, #0c0d11 0%, var(--bg) 100%);
+      overflow: hidden; position: relative;
+    }
+    .hero::after {
+      content: 'REVIEW';
+      position: absolute; right: -0.02em; top: 50%;
+      transform: translateY(-50%);
+      font-family: 'Lora', serif; font-style: italic;
+      font-size: clamp(7rem, 16vw, 16rem);
+      color: rgba(255,255,255,.02);
+      line-height: 1; pointer-events: none;
+      letter-spacing: -0.04em;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 1.2rem;
+    }
+    .hero-title {
+      font-family: 'Lora', serif; font-style: italic;
+      font-size: clamp(2rem, 5vw, 3.8rem);
+      font-weight: 400; color: var(--bright);
+      line-height: 1.1; letter-spacing: -0.01em;
+      margin-bottom: 1.8rem; max-width: 720px;
+    }
+    .hero-meta {
+      display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; color: var(--dim);
+    }
+    .hero-meta b { color: var(--text); font-weight: 500; }
+    .hash-pill {
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 4px; padding: 0.1em 0.5em;
+      color: var(--gold); font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem; display: inline-block;
+    }
+
+    /* ─── STATS ROW ──────────────────────────────────── */
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 1px;
+      margin: 2rem 0 1.5rem;
+      background: var(--border); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .stat {
+      flex: 1; min-width: 110px; background: var(--bg2);
+      padding: 1.1rem 1.4rem;
+      display: flex; flex-direction: column; gap: 0.2rem;
+    }
+    .stat-lbl {
+      font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--dim); font-weight: 600;
+    }
+    .stat-val {
+      font-family: 'Lora', serif; font-size: 2rem;
+      line-height: 1; color: var(--bright);
+    }
+    .stat-val.h { color: var(--high); }
+    .stat-val.m { color: var(--med); }
+    .stat-val.l { color: var(--low); }
+    .stat-val.n { color: var(--nice); }
+
+    /* ─── LEGEND PILLS ───────────────────────────────── */
+    .legend { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2.5rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.67rem;
+      font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+      padding: 0.28em 0.7em; border-radius: 3px; border: 1px solid;
+    }
+    .pill::before { content: '◆'; font-size: 0.55em; }
+    .pill-h { background: var(--high-bg); color: var(--high); border-color: var(--high-bdr); }
+    .pill-m { background: var(--med-bg);  color: var(--med);  border-color: var(--med-bdr);  }
+    .pill-l { background: var(--low-bg);  color: var(--low);  border-color: var(--low-bdr);  }
+    .pill-n { background: var(--nice-bg); color: var(--nice); border-color: var(--nice-bdr); }
+
+    /* ─── SECTION HEADINGS ───────────────────────────── */
+    .sec-head {
+      display: flex; align-items: baseline; gap: 0.8rem;
+      margin: 3.5rem 0 1.4rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-num {
+      font-family: 'Lora', serif; font-style: italic;
+      font-size: 0.85rem; color: var(--gold); letter-spacing: .04em;
+    }
+    .sec-title {
+      font-family: 'Lora', serif;
+      font-size: 1.5rem; font-weight: 400;
+      color: var(--bright); letter-spacing: -0.01em;
+    }
+
+    /* ─── FILE BLOCK ─────────────────────────────────── */
+    .file-block {
+      margin-bottom: 1.6rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden;
+    }
+    .file-head {
+      display: flex; align-items: center; gap: 0.8rem;
+      padding: 0.65rem 1.1rem;
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+    }
+    .file-icon { opacity: .45; flex-shrink: 0; }
+    .file-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem; color: var(--text); font-weight: 500;
+    }
+    .file-dir { color: var(--dim); }
+    .file-stats {
+      margin-left: auto; display: flex; gap: 0.6rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+    }
+    .f-add { color: var(--nice); }
+    .f-del { color: var(--high); }
+
+    /* ─── DIFF TABLE ─────────────────────────────────── */
+    .diff-wrap { overflow-x: auto; }
+    .diff {
+      width: 100%; border-collapse: collapse;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.77rem;
+      line-height: 1.75; background: var(--bg2);
+      table-layout: fixed;
+    }
+    .diff td { vertical-align: top; padding: 0; }
+
+    /* columns */
+    .col-lo  { width: 3.8em; }
+    .col-ln  { width: 3.8em; }
+    .col-sig { width: 1.4em; }
+    .col-ind { width: 1.6em; }
+    .col-cod { width: auto; }
+
+    /* line number cells */
+    .lno {
+      text-align: right; padding: 0 0.55em;
+      color: var(--muted); user-select: none;
+      background: var(--lno-ctx); font-size: 0.69rem;
+      border-right: 1px solid var(--border);
+    }
+    .row-add .lno { background: var(--lno-add); color: var(--nice); border-color: rgba(61,171,126,.2); }
+    .row-del .lno { background: var(--lno-del); color: var(--high); border-color: rgba(224,85,85,.2);  }
+
+    /* indicator column */
+    .ind {
+      text-align: center; padding: 0;
+      border-right: 1px solid var(--border);
+      background: var(--lno-ctx);
+      user-select: none;
+    }
+    .row-add .ind { background: var(--lno-add); border-color: rgba(61,171,126,.2); }
+    .row-del .ind { background: var(--lno-del); border-color: rgba(224,85,85,.2);  }
+
+    /* finding indicator dot */
+    .ind-dot {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; margin: 0 auto;
+    }
+    .dot-h { background: var(--high); box-shadow: 0 0 5px var(--high-glow); }
+    .dot-m { background: var(--med);  box-shadow: 0 0 5px var(--med-glow);  }
+    .dot-l { background: var(--low);  box-shadow: 0 0 5px var(--low-glow);  }
+    .dot-n { background: var(--nice); box-shadow: 0 0 5px var(--nice-glow); }
+
+    /* +/- sign */
+    .sig {
+      text-align: center; padding: 0 0.1em;
+      user-select: none; font-weight: 600;
+    }
+    .row-add .sig { color: var(--nice); background: var(--add-bg); }
+    .row-del .sig { color: var(--high); background: var(--del-bg); }
+
+    /* code cell */
+    .cod {
+      padding: 0 1rem 0 0.4rem;
+      white-space: pre; overflow: hidden; text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .row-add .cod { background: var(--add-bg); }
+    .row-del .cod { background: var(--del-bg); color: #b09090; }
+
+    /* hunk header */
+    .row-hunk td {
+      background: #0d0f16; padding: 0.2em 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .row-hunk .hunk-txt {
+      font-style: italic; color: var(--muted);
+      padding: 0 1rem; grid-column: 1 / -1;
+    }
+
+    /* collapsed lines */
+    .row-collapse td {
+      background: var(--bg); text-align: center;
+      padding: 0.35em 0; color: var(--muted);
+      font-style: italic; font-size: 0.7rem;
+      border-top: 1px dashed var(--border);
+      border-bottom: 1px dashed var(--border);
+    }
+
+    /* ─── ANNOTATION ROWS ────────────────────────────── */
+    .ann-row td { padding: 0; }
+    .ann-wrap {
+      position: relative;
+      margin: 0;
+    }
+    /* triangle pointing up at the flagged line */
+    .ann-wrap::before {
+      content: '';
+      position: absolute;
+      top: -8px; left: 9.6em; /* aligns with start of code column */
+      width: 0; height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+    }
+    .ann-wrap.av-h::before { border-bottom: 8px solid var(--high); }
+    .ann-wrap.av-m::before { border-bottom: 8px solid var(--med); }
+    .ann-wrap.av-l::before { border-bottom: 8px solid var(--low); }
+    .ann-wrap.av-n::before { border-bottom: 8px solid var(--nice); }
+
+    .ann-inner {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 0.9rem 1.1rem 0.9rem 1.4rem;
+      border-left: 3px solid;
+    }
+    .ann-inner.ai-h { background: var(--high-bg); border-color: var(--high); }
+    .ann-inner.ai-m { background: var(--med-bg);  border-color: var(--med);  }
+    .ann-inner.ai-l { background: var(--low-bg);  border-color: var(--low);  }
+    .ann-inner.ai-n { background: var(--nice-bg); border-color: var(--nice); }
+
+    .ann-meta { flex-shrink: 0; display: flex; flex-direction: column; gap: 0.3rem; padding-top: 0.1rem; }
+    .ann-fnum {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem; color: var(--dim);
+      letter-spacing: .04em;
+    }
+    .ann-body {}
+    .ann-title {
+      font-weight: 600; font-size: 0.84rem;
+      margin-bottom: 0.3rem; line-height: 1.3;
+    }
+    .ai-h .ann-title { color: var(--high); }
+    .ai-m .ann-title { color: var(--med);  }
+    .ai-l .ann-title { color: var(--low);  }
+    .ai-n .ann-title { color: var(--nice); }
+
+    .ann-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.81rem; color: var(--text);
+      line-height: 1.58;
+    }
+    .ann-ref {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.67rem; color: var(--dim);
+      margin-top: 0.45rem;
+    }
+    .ann-ref strong { color: var(--text); font-weight: 500; }
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.83em;
+      background: rgba(255,255,255,.07); padding: 0.1em 0.35em;
+      border-radius: 3px; color: #c8a66a;
+    }
+
+    /* ─── FINDINGS GRID ──────────────────────────────── */
+    .findings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 0.9rem; margin-bottom: 2rem;
+    }
+    .fc {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.1rem 1.2rem;
+      border-top: 2px solid;
+      transition: transform .15s, box-shadow .15s;
+      position: relative; overflow: hidden;
+    }
+    .fc:hover { transform: translateY(-2px); }
+    .fc-h { border-top-color: var(--high); }
+    .fc-h:hover { box-shadow: 0 6px 24px var(--high-glow); }
+    .fc-m { border-top-color: var(--med); }
+    .fc-m:hover { box-shadow: 0 6px 24px var(--med-glow); }
+    .fc-l { border-top-color: var(--low); }
+    .fc-l:hover { box-shadow: 0 6px 24px var(--low-glow); }
+    .fc-n { border-top-color: var(--nice); }
+    .fc-n:hover { box-shadow: 0 6px 24px var(--nice-glow); }
+
+    .fc-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .fc-id { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--dim); }
+    .fc-title { font-weight: 600; font-size: 0.86rem; color: var(--bright); }
+    .fc-desc { font-size: 0.79rem; color: var(--dim); line-height: 1.55; }
+    .fc-loc { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--muted); margin-top: 0.55rem; }
+
+    /* ─── QUESTIONS ──────────────────────────────────── */
+    .qs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 1.1rem; margin-bottom: 4rem;
+    }
+    .qc {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.5rem 1.5rem 1.2rem;
+      position: relative; overflow: hidden;
+      transition: border-color .18s, transform .18s;
+    }
+    .qc:hover { border-color: var(--gold-soft); transform: translateY(-2px); }
+    /* top accent line */
+    .qc::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold-soft) 0%, transparent 70%);
+    }
+    .qc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.9rem; }
+    .qc-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.63rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); background: rgba(255,255,255,.04);
+      border: 1px solid var(--border2); border-radius: 3px;
+      padding: 0.2em 0.6em;
+    }
+    .qc-num {
+      font-family: 'Lora', serif; font-style: italic;
+      font-size: 2.8rem; line-height: 1;
+      color: rgba(201,150,90,.12); user-select: none;
+      letter-spacing: -0.02em;
+    }
+    .qc-q {
+      font-family: 'Lora', serif; font-style: italic;
+      font-size: 1.08rem; font-weight: 600;
+      color: var(--bright); line-height: 1.3;
+      margin-bottom: 0.6rem;
+    }
+    .qc-body {
+      font-size: 0.81rem; color: var(--dim); line-height: 1.62;
+      margin-bottom: 0.9rem;
+    }
+    .qc-ref {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.66rem; color: var(--muted);
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+    }
+    .qc-ref b { color: var(--dim); font-weight: 500; }
+
+    /* ─── FOOTER ─────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0 2.5rem;
+      display: flex; flex-wrap: wrap;
+      justify-content: space-between; gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.67rem; color: var(--muted);
+    }
+
+    /* ─── DIVIDER ────────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0 0; }
+
+    /* ─── PAGE LOAD FADE ─────────────────────────────── */
+    @keyframes up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero        { animation: up .45s ease both; }
+    .file-block  { animation: up .35s ease both; }
+    .fc          { animation: up .35s ease both; }
+    .qc          { animation: up .35s ease both; }
+    .file-block:nth-child(1) { animation-delay: .04s; }
+    .file-block:nth-child(2) { animation-delay: .09s; }
+    .file-block:nth-child(3) { animation-delay: .14s; }
+    .file-block:nth-child(4) { animation-delay: .19s; }
+    .file-block:nth-child(5) { animation-delay: .24s; }
+    .fc:nth-child(1) { animation-delay: .05s; }
+    .fc:nth-child(2) { animation-delay: .09s; }
+    .fc:nth-child(3) { animation-delay: .13s; }
+    .fc:nth-child(4) { animation-delay: .17s; }
+    .fc:nth-child(5) { animation-delay: .21s; }
+    .fc:nth-child(6) { animation-delay: .25s; }
+    .fc:nth-child(7) { animation-delay: .29s; }
+    .fc:nth-child(8) { animation-delay: .33s; }
+    .qc:nth-child(1) { animation-delay: .05s; }
+    .qc:nth-child(2) { animation-delay: .10s; }
+    .qc:nth-child(3) { animation-delay: .15s; }
+    .qc:nth-child(4) { animation-delay: .20s; }
+    .qc:nth-child(5) { animation-delay: .25s; }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a href="#iface"   class="nav-link h">ICache.cs</a>
+    <span class="topnav-sep">·</span>
+    <a href="#csproj"  class="nav-link">Cache.Sandbox.csproj</a>
+    <span class="topnav-sep">·</span>
+    <a href="#sampler" class="nav-link m">KeySampler.cs</a>
+    <span class="topnav-sep">·</span>
+    <a href="#program" class="nav-link m">Program.cs</a>
+    <span class="topnav-sep">·</span>
+    <a href="#runner"  class="nav-link h">Runner.cs</a>
+    <span class="topnav-sep">·</span>
+    <a href="#findings" class="nav-link act">Findings</a>
+    <span class="topnav-sep">·</span>
+    <a href="#questions" class="nav-link act">Questions</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">Code Review · CSharpCache · f01471e</div>
+    <h1 class="hero-title">Add Runner, KeySampler,<br>and cache disposal support</h1>
+    <div class="hero-meta">
+      <span>Commit <span class="hash-pill">f01471e</span></span>
+      <span>Author <b>Aleksander Dokken</b></span>
+      <span>Date <b>Sun Oct 12 21:43:58 2025 +0200</b></span>
+      <span>Changes <b>5 files · +96 / −5</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-lbl">Files</div><div class="stat-val">5</div></div>
+    <div class="stat"><div class="stat-lbl">High</div><div class="stat-val h">2</div></div>
+    <div class="stat"><div class="stat-lbl">Medium</div><div class="stat-val m">3</div></div>
+    <div class="stat"><div class="stat-lbl">Low</div><div class="stat-val l">2</div></div>
+    <div class="stat"><div class="stat-lbl">Nice</div><div class="stat-val n">1</div></div>
+    <div class="stat"><div class="stat-lbl">Questions</div><div class="stat-val">5</div></div>
+  </div>
+
+  <div class="legend">
+    <span class="pill pill-h">High — correctness / broken contract</span>
+    <span class="pill pill-m">Med — design smell / latent risk</span>
+    <span class="pill pill-l">Low — nit / style / minor</span>
+    <span class="pill pill-n">Nice — opportunistic improvement</span>
+  </div>
+
+  <!-- ━━━ DIFF ━━━ -->
+  <div class="sec-head"><span class="sec-num">01 —</span><span class="sec-title">Diff</span></div>
+
+  <!-- FILE: ICache.cs -->
+  <div class="file-block" id="iface">
+    <div class="file-head">
+      <svg class="file-icon" width="13" height="16" viewBox="0 0 13 16" fill="none"><path d="M2 1h7l3 3v11H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span class="file-path"><span class="file-dir">Cache.Core / </span>ICache.cs</span>
+      <div class="file-stats"><span class="f-add">+2</span><span class="f-del">−1</span></div>
+    </div>
+    <div class="diff-wrap">
+      <table class="diff">
+        <colgroup><col class="col-lo"><col class="col-ln"><col class="col-ind"><col class="col-sig"><col class="col-cod"></colgroup>
+        <tbody>
+          <tr class="row-hunk">
+            <td colspan="4"></td>
+            <td class="hunk-txt">@@ -13,6 +13,8 @@ — ICache&lt;K, V&gt;</td>
+          </tr>
+          <tr><td class="lno">13</td><td class="lno">13</td><td class="ind"></td><td class="sig"></td><td class="cod">    <span style="color:var(--dim)">// TODO: use approx count for high-concurrency</span></td></tr>
+          <tr><td class="lno">14</td><td class="lno">14</td><td class="ind"></td><td class="sig"></td><td class="cod">    <span style="color:var(--low)">int</span> Count { <span style="color:var(--low)">get</span>; }</td></tr>
+          <tr class="row-del">
+            <td class="lno">15</td><td class="lno"></td>
+            <td class="ind"><span class="ind-dot dot-h"></span></td>
+            <td class="sig">−</td>
+            <td class="cod"><span style="color:var(--muted)">        ← (trailing whitespace)</span></td>
+          </tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">15</td>
+            <td class="ind"><span class="ind-dot dot-h"></span></td>
+            <td class="sig">+</td>
+            <td class="cod"></td>
+          </tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">16</td>
+            <td class="ind"><span class="ind-dot dot-h"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">    <span style="color:var(--low)">void</span> Dispose();</td>
+          </tr>
+          <!-- ANNOTATION -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-h">
+              <div class="ann-inner ai-h">
+                <div class="ann-meta"><div class="ann-fnum">F-01</div><span class="pill pill-h" style="font-size:.6rem;padding:.2em .55em">HIGH</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Bare <code>void Dispose()</code> doesn't satisfy the .NET disposal contract</div>
+                  <div class="ann-text">Adding a raw method to the interface rather than inheriting <code>IDisposable</code>
+                  means callers can't use <code>using (ICache&lt;K,V&gt; c = …)</code>, DI containers won't register it for
+                  automatic cleanup, and code that pattern-matches on <code>obj is IDisposable</code> silently skips it.
+                  The method looks like disposal but the type doesn't <em>is-a</em> disposable — a broken social contract.</div>
+                  <div class="ann-ref"><strong>Fix:</strong> <code>public interface ICache&lt;K,V&gt; : IDisposable { … }</code> — then remove the redundant declaration here</div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">17</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr><td class="lno">16</td><td class="lno">18</td><td class="ind"></td><td class="sig"></td><td class="cod">}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FILE: .csproj -->
+  <div class="file-block" id="csproj">
+    <div class="file-head">
+      <svg class="file-icon" width="13" height="16" viewBox="0 0 13 16" fill="none"><path d="M2 1h7l3 3v11H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span class="file-path"><span class="file-dir">Cache.Sandbox / </span>Cache.Sandbox.csproj</span>
+      <div class="file-stats"><span class="f-add">+10</span><span class="f-del">−1</span></div>
+    </div>
+    <div class="diff-wrap">
+      <table class="diff">
+        <colgroup><col class="col-lo"><col class="col-ln"><col class="col-ind"><col class="col-sig"><col class="col-cod"></colgroup>
+        <tbody>
+          <tr class="row-hunk"><td colspan="4"></td><td class="hunk-txt">@@ -7,11 +7,21 @@</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">8</td><td class="ind"></td><td class="sig">+</td><td class="cod">  &lt;<span style="color:#7eb5e0">ItemGroup</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">9</td><td class="ind"></td><td class="sig">+</td><td class="cod">    &lt;<span style="color:#7eb5e0">None</span> <span style="color:#9ec98a">Remove</span>=<span style="color:#c9965a">"appsettings.json"</span> /&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">10</td><td class="ind"></td><td class="sig">+</td><td class="cod">  &lt;/<span style="color:#7eb5e0">ItemGroup</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">11</td><td class="ind"></td><td class="sig">+</td><td class="cod">  &lt;<span style="color:#7eb5e0">ItemGroup</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">12</td><td class="ind"></td><td class="sig">+</td><td class="cod">    &lt;<span style="color:#7eb5e0">Content</span> <span style="color:#9ec98a">Include</span>=<span style="color:#c9965a">"appsettings.json"</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">13</td><td class="ind"></td><td class="sig">+</td><td class="cod">      &lt;<span style="color:#7eb5e0">CopyToOutputDirectory</span>&gt;PreserveNewest&lt;/<span style="color:#7eb5e0">CopyToOutputDirectory</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">14</td><td class="ind"></td><td class="sig">+</td><td class="cod">    &lt;/<span style="color:#7eb5e0">Content</span>&gt;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">15</td><td class="ind"></td><td class="sig">+</td><td class="cod">  &lt;/<span style="color:#7eb5e0">ItemGroup</span>&gt;</td></tr>
+          <tr class="row-del">
+            <td class="lno">16</td><td class="lno"></td>
+            <td class="ind"><span class="ind-dot dot-l"></span></td>
+            <td class="sig">−</td>
+            <td class="cod"><span style="color:var(--muted)">  ← (blank, space-indented)</span></td>
+          </tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">21</td>
+            <td class="ind"><span class="ind-dot dot-l"></span></td>
+            <td class="sig">+</td>
+            <td class="cod"><span style="color:var(--muted)">	← (blank, TAB-indented)</span></td>
+          </tr>
+          <!-- ANNOTATION -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-l">
+              <div class="ann-inner ai-l">
+                <div class="ann-meta"><div class="ann-fnum">F-07</div><span class="pill pill-l" style="font-size:.6rem;padding:.2em .55em">LOW</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Mixed indentation: spaces replaced by a hard tab on line 21</div>
+                  <div class="ann-text">The rest of the file uses spaces. This one blank line uses a tab character, introducing
+                  mixed whitespace that will generate noise in future diffs and may conflict with the EditorConfig added
+                  one commit later (which targets the Roslyn team's <code>indent_style = space</code> setting).</div>
+                  <div class="ann-ref"><strong>Fix:</strong> delete the line or replace the tab with two spaces to match surrounding XML</div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FILE: KeySampler.cs -->
+  <div class="file-block" id="sampler">
+    <div class="file-head">
+      <svg class="file-icon" width="13" height="16" viewBox="0 0 13 16" fill="none"><path d="M2 1h7l3 3v11H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span class="file-path"><span class="file-dir">Cache.Sandbox / </span>KeySampler.cs <span style="color:var(--dim);font-size:.75em">(new file)</span></span>
+      <div class="file-stats"><span class="f-add">+28</span></div>
+    </div>
+    <div class="diff-wrap">
+      <table class="diff">
+        <colgroup><col class="col-lo"><col class="col-ln"><col class="col-ind"><col class="col-sig"><col class="col-cod"></colgroup>
+        <tbody>
+          <tr class="row-hunk"><td colspan="4"></td><td class="hunk-txt">@@ -0,0 +1,28 @@ — new file</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">1</td><td class="ind"></td><td class="sig">+</td><td class="cod"><span style="color:var(--low)">namespace</span> Cache.Sandbox {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">2</td><td class="ind"></td><td class="sig">+</td><td class="cod">    <span style="color:var(--low)">internal class</span> <span style="color:#7eb5e0">KeySampler</span> {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">3</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">private readonly int</span> _keySpace;</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">4</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">        <span style="color:var(--low)">private readonly string</span> _distribution;</td>
+          </tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">5</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">private readonly int</span> _hotCount;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">6</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">private readonly double</span> _hotProbability;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">7</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">8</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">public</span> <span style="color:#7eb5e0">KeySampler</span>(<span style="color:#7eb5e0">SandboxConfig</span> config) {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">9</td><td class="ind"></td><td class="sig">+</td><td class="cod">            _keySpace = config.Keyspace;</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">10</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">            _distribution = config.Distribution.<span style="color:#7eb5e0">ToLowerInvariant</span>();</td>
+          </tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">11</td><td class="ind"></td><td class="sig">+</td><td class="cod">            _hotCount = (<span style="color:var(--low)">int</span>)(_keySpace * config.HotsetFraction);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">12</td><td class="ind"></td><td class="sig">+</td><td class="cod">            _hotProbability = config.HotsetProbability;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">13</td><td class="ind"></td><td class="sig">+</td><td class="cod">        }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">14</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">15</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">public int</span> <span style="color:#9ec98a">NextKey</span>(<span style="color:#7eb5e0">Random</span> random) {</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">16</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">            <span style="color:var(--low)">return</span> _distribution <span style="color:var(--low)">switch</span> {</td>
+          </tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">17</td><td class="ind"></td><td class="sig">+</td><td class="cod">                <span style="color:#c9965a">"hotset"</span> =&gt; random.<span style="color:#9ec98a">NextDouble</span>() &lt; _hotProbability</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">18</td><td class="ind"></td><td class="sig">+</td><td class="cod">                                ? random.<span style="color:#9ec98a">Next</span>(_hotCount)            <span style="color:var(--dim)">// hot set</span></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">19</td><td class="ind"></td><td class="sig">+</td><td class="cod">                                : random.<span style="color:#9ec98a">Next</span>(_hotCount, _keySpace), <span style="color:var(--dim)">// cold set</span></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">20</td><td class="ind"></td><td class="sig">+</td><td class="cod">                _ =&gt; random.<span style="color:#9ec98a">Next</span>(0, _keySpace)               <span style="color:var(--dim)">// uniform</span></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">21</td><td class="ind"></td><td class="sig">+</td><td class="cod">            };</td></tr>
+          <!-- ANNOTATION -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-m">
+              <div class="ann-inner ai-m">
+                <div class="ann-meta"><div class="ann-fnum">F-05</div><span class="pill pill-m" style="font-size:.6rem;padding:.2em .55em">MED</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Stringly-typed distribution — unknown value silently becomes "uniform"</div>
+                  <div class="ann-text">The switch arms cover only <code>"hotset"</code> and the discard (<code>_</code>).
+                  Any unrecognised string — including a capitalisation typo like <code>"Hotset"</code> in appsettings.json —
+                  silently falls through to uniform sampling with no warning. The ToLowerInvariant() call papers over
+                  case, but doesn't guard against entirely invalid values.</div>
+                  <div class="ann-ref">
+                    <strong>Option A (validate):</strong> <code>if (_distribution is not "hotset" and not "uniform") throw new ArgumentException(…);</code><br>
+                    <strong>Option B (enum):</strong> add <code>enum DistributionKind { Uniform, Hotset }</code> to SandboxConfig — JSON binding handles it automatically and eliminates the string entirely
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">22</td><td class="ind"></td><td class="sig">+</td><td class="cod">        }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">23</td><td class="ind"></td><td class="sig">+</td><td class="cod">    }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">24</td><td class="ind"></td><td class="sig">+</td><td class="cod">}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FILE: Program.cs -->
+  <div class="file-block" id="program">
+    <div class="file-head">
+      <svg class="file-icon" width="13" height="16" viewBox="0 0 13 16" fill="none"><path d="M2 1h7l3 3v11H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span class="file-path"><span class="file-dir">Cache.Sandbox / </span>Program.cs</span>
+      <div class="file-stats"><span class="f-add">+7</span><span class="f-del">−3</span></div>
+    </div>
+    <div class="diff-wrap">
+      <table class="diff">
+        <colgroup><col class="col-lo"><col class="col-ln"><col class="col-ind"><col class="col-sig"><col class="col-cod"></colgroup>
+        <tbody>
+          <tr class="row-hunk"><td colspan="4"></td><td class="hunk-txt">@@ -2,6 +2,6 @@ — method chaining style fix (cosmetic)</td></tr>
+          <tr class="row-del"><td class="lno">2</td><td class="lno"></td><td class="ind"></td><td class="sig">−</td><td class="cod"><span style="color:var(--low)">var</span> configRoot = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">ConfigurationBuilder</span>().<span style="color:#9ec98a">SetBasePath</span>(…)</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">2</td><td class="ind"></td><td class="sig">+</td><td class="cod"><span style="color:var(--low)">var</span> configRoot = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">ConfigurationBuilder</span>()</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">3</td><td class="ind"></td><td class="sig">+</td><td class="cod">    .<span style="color:#9ec98a">SetBasePath</span>(Directory.<span style="color:#9ec98a">GetCurrentDirectory</span>())</td></tr>
+          <tr class="row-collapse"><td colspan="5">··· 12 unchanged lines ···</td></tr>
+          <tr class="row-hunk"><td colspan="4"></td><td class="hunk-txt">@@ -19,4 +22,5 @@ — new: wire up cache &amp; runner</td></tr>
+          <tr><td class="lno">19</td><td class="lno">19</td><td class="ind"></td><td class="sig"></td><td class="cod">        _ =&gt; <span style="color:var(--low)">throw new</span> <span style="color:#7eb5e0">ArgumentOutOfRangeException</span>(…)</td></tr>
+          <tr class="row-del"><td class="lno">20</td><td class="lno"></td><td class="ind"></td><td class="sig">−</td><td class="cod">    }; <span style="color:var(--high-glow)">← no newline at EOF</span></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">20</td><td class="ind"></td><td class="sig">+</td><td class="cod">    };</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">21</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">22</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod"><span style="color:var(--low)">var</span> cache = <span style="color:#9ec98a">CreateCache</span>(config);</td>
+          </tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">23</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod"><span style="color:var(--low)">await</span> Runner.<span style="color:#9ec98a">RunAsync</span>(cache, config); <span style="color:var(--low-glow)">← no newline at EOF</span></td>
+          </tr>
+          <!-- ANNOTATION: ownership -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-m">
+              <div class="ann-inner ai-m">
+                <div class="ann-meta"><div class="ann-fnum">F-03</div><span class="pill pill-m" style="font-size:.6rem;padding:.2em .55em">MED</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Caller creates the cache; callee disposes it — split ownership</div>
+                  <div class="ann-text">
+                    <code>Program.cs</code> allocates <code>cache</code>, then hands it to
+                    <code>Runner.RunAsync</code> which disposes it internally. The creator has no way to guarantee
+                    cleanup if <code>RunAsync</code> throws before its <code>finally</code> fires, and the ownership
+                    is undocumented. Standard .NET idiom: creator owns lifetime via <code>await using</code>, callee
+                    accepts a non-owning reference.
+                  </div>
+                  <div class="ann-ref">
+                    <strong>Fix:</strong> <code>await using var cache = CreateCache(config);</code><br>
+                    Then remove <code>cache.Dispose()</code> from inside <code>Runner</code> entirely.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <!-- ANNOTATION: EOF -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-l">
+              <div class="ann-inner ai-l">
+                <div class="ann-meta"><div class="ann-fnum">F-06</div><span class="pill pill-l" style="font-size:.6rem;padding:.2em .55em">LOW</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Missing newline at end of file — second occurrence</div>
+                  <div class="ann-text">The old file had this problem; the rewrite doesn't fix it.
+                  POSIX mandates a trailing newline, and many toolchain utilities (grep, cat, wc, git diff)
+                  behave unexpectedly without it. The Roslyn-team EditorConfig added in the next commit should
+                  enforce <code>insert_final_newline = true</code> — worth verifying it's set.</div>
+                  <div class="ann-ref">Program.cs:23 (EOF) — add a final newline; covered by EditorConfig in commit 5bb1fff</div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FILE: Runner.cs -->
+  <div class="file-block" id="runner">
+    <div class="file-head">
+      <svg class="file-icon" width="13" height="16" viewBox="0 0 13 16" fill="none"><path d="M2 1h7l3 3v11H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span class="file-path"><span class="file-dir">Cache.Sandbox / </span>Runner.cs <span style="color:var(--dim);font-size:.75em">(new file)</span></span>
+      <div class="file-stats"><span class="f-add">+46</span></div>
+    </div>
+    <div class="diff-wrap">
+      <table class="diff">
+        <colgroup><col class="col-lo"><col class="col-ln"><col class="col-ind"><col class="col-sig"><col class="col-cod"></colgroup>
+        <tbody>
+          <tr class="row-hunk"><td colspan="4"></td><td class="hunk-txt">@@ -0,0 +1,46 @@ — new file</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">1</td><td class="ind"></td><td class="sig">+</td><td class="cod"><span style="color:var(--low)">using</span> Cache.Core;</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">2</td><td class="ind"></td><td class="sig">+</td><td class="cod"><span style="color:var(--low)">namespace</span> Cache.Sandbox {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">3</td><td class="ind"></td><td class="sig">+</td><td class="cod">    <span style="color:var(--low)">internal class</span> <span style="color:#7eb5e0">Runner</span> {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">4</td><td class="ind"></td><td class="sig">+</td><td class="cod">        <span style="color:var(--low)">public static async</span> <span style="color:#7eb5e0">Task</span> <span style="color:#9ec98a">RunAsync</span>(<span style="color:#7eb5e0">ICache</span>&lt;<span style="color:var(--low)">string</span>, <span style="color:var(--low)">byte</span>[]&gt; cache, <span style="color:#7eb5e0">SandboxConfig</span> config) {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">5</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">var</span> cts = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">CancellationTokenSource</span>(<span style="color:#7eb5e0">TimeSpan</span>.<span style="color:#9ec98a">FromSeconds</span>(config.DurationSeconds));</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">6</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">var</span> keySampler = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">KeySampler</span>(config);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">7</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">var</span> value = <span style="color:var(--low)">new byte</span>[config.ValueBytes];</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">8</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">var</span> random = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">Random</span>(config.Seed ?? <span style="color:#7eb5e0">Environment</span>.TickCount);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">9</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">10</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">try</span> {</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">11</td>
+            <td class="ind"><span class="ind-dot dot-m"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">                <span style="color:var(--low)">var</span> workers = <span style="color:#7eb5e0">Enumerable</span>.<span style="color:#9ec98a">Range</span>(0, config.Concurrency)</td>
+          </tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">12</td><td class="ind"></td><td class="sig">+</td><td class="cod">                  .<span style="color:#9ec98a">Select</span>(_ =&gt; <span style="color:#7eb5e0">Task</span>.<span style="color:#9ec98a">Run</span>(() =&gt; {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">13</td><td class="ind"></td><td class="sig">+</td><td class="cod">                      <span style="color:var(--low)">var</span> rnd = <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">Random</span>(random.<span style="color:#9ec98a">Next</span>());</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">14</td><td class="ind"></td><td class="sig">+</td><td class="cod">                      <span style="color:var(--low)">while</span> (!cts.Token.IsCancellationRequested) {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">15</td><td class="ind"></td><td class="sig">+</td><td class="cod">                          <span style="color:var(--low)">var</span> key = keySampler.<span style="color:#9ec98a">NextKey</span>(rnd).<span style="color:#9ec98a">ToString</span>();</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">16</td><td class="ind"></td><td class="sig">+</td><td class="cod">                          <span style="color:var(--low)">if</span> (rnd.<span style="color:#9ec98a">Next</span>(100) &lt; config.ReadPercent)</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">17</td><td class="ind"></td><td class="sig">+</td><td class="cod">                              cache.<span style="color:#9ec98a">TryGet</span>(key, <span style="color:var(--low)">out byte</span>[]? _);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">18</td><td class="ind"></td><td class="sig">+</td><td class="cod">                          <span style="color:var(--low)">else</span></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">19</td><td class="ind"></td><td class="sig">+</td><td class="cod">                              cache.<span style="color:#9ec98a">Set</span>(key, value, <span style="color:var(--low)">new</span> <span style="color:#7eb5e0">CacheEntryOptions</span>(config.DefaultTtl));</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">20</td><td class="ind"></td><td class="sig">+</td><td class="cod">                      }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">21</td><td class="ind"></td><td class="sig">+</td><td class="cod">                  }, cts.Token))</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">22</td><td class="ind"></td><td class="sig">+</td><td class="cod">                  .<span style="color:#9ec98a">ToArray</span>();</td></tr>
+          <!-- ANNOTATION: workers not awaited on exception path -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-m">
+              <div class="ann-inner ai-m">
+                <div class="ann-meta"><div class="ann-fnum">F-04</div><span class="pill pill-m" style="font-size:.6rem;padding:.2em .55em">MED</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Exception in monitoring loop → workers run into a disposed cache</div>
+                  <div class="ann-text">
+                    If anything inside the <code>while</code> loop (e.g., <code>GetMetricsSnapshot()</code>) throws,
+                    control jumps directly to the <code>finally</code> block which calls <code>cache.Dispose()</code>.
+                    At that point up to <code>config.Concurrency</code> workers are still running — the token isn't
+                    cancelled on exception, so they spin until the timer fires, calling <code>TryGet</code> and <code>Set</code>
+                    on a disposed object. The <code>CancellationTokenSource</code> passed to <code>Task.Run</code>
+                    only cancels task scheduling, not the manual <code>while (!cts.Token…)</code> guard inside each lambda.
+                  </div>
+                  <div class="ann-ref">
+                    <strong>Fix:</strong> wrap monitoring in a <code>catch</code>: <code>cts.Cancel(); await Task.WhenAll(workers); throw;</code><br>
+                    so workers stop and drain before the <code>finally</code> disposes the cache
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">23</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">24</td><td class="ind"></td><td class="sig">+</td><td class="cod">                <span style="color:var(--low)">while</span> (!cts.IsCancellationRequested) {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">25</td><td class="ind"></td><td class="sig">+</td><td class="cod">                    <span style="color:var(--low)">await</span> <span style="color:#7eb5e0">Task</span>.<span style="color:#9ec98a">Delay</span>(1000);</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">26</td>
+            <td class="ind"><span class="ind-dot dot-n"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">                    <span style="color:var(--low)">if</span> (cache <span style="color:var(--low)">is</span> <span style="color:#7eb5e0">Cache.Adapters.Memory.TtlCache</span>&lt;<span style="color:var(--low)">byte</span>[]&gt; ttl) {</td>
+          </tr>
+          <!-- ANNOTATION: downcast -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-n">
+              <div class="ann-inner ai-n">
+                <div class="ann-meta"><div class="ann-fnum">F-08</div><span class="pill pill-n" style="font-size:.6rem;padding:.2em .55em">NICE</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Concrete type downcast — breaks the ICache abstraction</div>
+                  <div class="ann-text">
+                    <code>Runner</code> accepts <code>ICache&lt;K,V&gt;</code> but then casts to
+                    <code>Cache.Adapters.Memory.TtlCache&lt;byte[]&gt;</code> to access metrics.
+                    This defeats the point of the interface and makes it impossible to use any other cache
+                    implementation in benchmarks without modifying <code>Runner</code>.
+                  </div>
+                  <div class="ann-ref">
+                    <strong>Option:</strong> add <code>interface IMetricsProvider { MetricsSnapshot GetMetricsSnapshot(); }</code>,
+                    implement on <code>TtlCache</code>, check <code>if (cache is IMetricsProvider mp)</code> here — decoupled, extensible
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">27</td><td class="ind"></td><td class="sig">+</td><td class="cod">                        <span style="color:var(--low)">var</span> m = ttl.<span style="color:#9ec98a">GetMetricsSnapshot</span>();</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">28</td><td class="ind"></td><td class="sig">+</td><td class="cod">                        <span style="color:#7eb5e0">Console</span>.<span style="color:#9ec98a">WriteLine</span>(<span style="color:#c9965a">$"hits={m.Hits} misses={m.Misses} hitRate={m.HitRate:P1} …"</span>);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">29</td><td class="ind"></td><td class="sig">+</td><td class="cod">                    } <span style="color:var(--low)">else</span> {</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">30</td><td class="ind"></td><td class="sig">+</td><td class="cod">                        <span style="color:#7eb5e0">Console</span>.<span style="color:#9ec98a">WriteLine</span>(<span style="color:#c9965a">$"count={cache.Count}"</span>);</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">31</td><td class="ind"></td><td class="sig">+</td><td class="cod">                    }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">32</td><td class="ind"></td><td class="sig">+</td><td class="cod">                }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">33</td><td class="ind"></td><td class="sig">+</td><td class="cod"></td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">34</td><td class="ind"></td><td class="sig">+</td><td class="cod">                <span style="color:var(--low)">await</span> <span style="color:#7eb5e0">Task</span>.<span style="color:#9ec98a">WhenAll</span>(workers);</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">35</td>
+            <td class="ind"><span class="ind-dot dot-h"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">                cache.<span style="color:#9ec98a">Dispose</span>();  <span style="color:rgba(224,85,85,.5)">← ① first dispose</span></td>
+          </tr>
+          <!-- ANNOTATION: double dispose -->
+          <tr class="ann-row"><td colspan="5" style="padding:0">
+            <div class="ann-wrap av-h">
+              <div class="ann-inner ai-h">
+                <div class="ann-meta"><div class="ann-fnum">F-02</div><span class="pill pill-h" style="font-size:.6rem;padding:.2em .55em">HIGH</span></div>
+                <div class="ann-body">
+                  <div class="ann-title">Double Dispose — cache.Dispose() called here (①) and again in finally (②)</div>
+                  <div class="ann-text">
+                    <code>cache.Dispose()</code> on line 35 runs on the happy path, then the <code>finally</code>
+                    block at line 42 calls it again <em>unconditionally</em>. The .NET spec says implementations
+                    <em>should</em> be idempotent, but it's not required — a custom cache that stops a background
+                    thread, closes a file, or disposes child resources on first call will silently double-free on
+                    the second. Today's <code>TtlCache</code> is forgiving; tomorrow's implementation may not be.
+                  </div>
+                  <div class="ann-ref">
+                    <strong>Fix:</strong> delete line 35 entirely. The <code>finally</code> block is sufficient and correct — it's already always executed.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">36</td><td class="ind"></td><td class="sig">+</td><td class="cod">            }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">37</td><td class="ind"></td><td class="sig">+</td><td class="cod">            <span style="color:var(--low)">finally</span> {</td></tr>
+          <tr class="row-add">
+            <td class="lno"></td><td class="lno">38</td>
+            <td class="ind"><span class="ind-dot dot-h"></span></td>
+            <td class="sig">+</td>
+            <td class="cod">                cache.<span style="color:#9ec98a">Dispose</span>();  <span style="color:rgba(224,85,85,.5)">← ② second dispose (always runs)</span></td>
+          </tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">39</td><td class="ind"></td><td class="sig">+</td><td class="cod">            }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">40</td><td class="ind"></td><td class="sig">+</td><td class="cod">        }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">41</td><td class="ind"></td><td class="sig">+</td><td class="cod">    }</td></tr>
+          <tr class="row-add"><td class="lno"></td><td class="lno">42</td><td class="ind"></td><td class="sig">+</td><td class="cod">}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ━━━ FINDINGS ━━━ -->
+  <hr class="divider">
+  <div class="sec-head" id="findings"><span class="sec-num">02 —</span><span class="sec-title">Findings</span></div>
+
+  <div class="findings-grid">
+    <div class="fc fc-h">
+      <div class="fc-header"><span class="pill pill-h" style="font-size:.63rem">HIGH</span><span class="fc-id">F-01</span></div>
+      <div class="fc-title">ICache doesn't extend IDisposable</div>
+      <div class="fc-desc">Bare <code>void Dispose()</code> on the interface breaks <code>using</code> blocks, DI container lifetime management, and <code>is IDisposable</code> pattern matching. No caller can safely use standard disposal idioms.</div>
+      <div class="fc-loc">ICache.cs:15</div>
+    </div>
+    <div class="fc fc-h">
+      <div class="fc-header"><span class="pill pill-h" style="font-size:.63rem">HIGH</span><span class="fc-id">F-02</span></div>
+      <div class="fc-title">Double Dispose in Runner.cs</div>
+      <div class="fc-desc"><code>cache.Dispose()</code> called explicitly on the happy path (line 35) and again unconditionally in <code>finally</code> (line 38). Remove line 35; rely only on the <code>finally</code> block.</div>
+      <div class="fc-loc">Runner.cs:35, 38</div>
+    </div>
+    <div class="fc fc-m">
+      <div class="fc-header"><span class="pill pill-m" style="font-size:.63rem">MED</span><span class="fc-id">F-03</span></div>
+      <div class="fc-title">Split ownership — creator ≠ disposer</div>
+      <div class="fc-desc">Program.cs creates the cache; Runner disposes it. No contract, no documentation. Use <code>await using var cache = CreateCache(config);</code> and remove disposal from Runner.</div>
+      <div class="fc-loc">Program.cs:22–23 · Runner.cs:38</div>
+    </div>
+    <div class="fc fc-m">
+      <div class="fc-header"><span class="pill pill-m" style="font-size:.63rem">MED</span><span class="fc-id">F-04</span></div>
+      <div class="fc-title">Workers not drained before Dispose on exception</div>
+      <div class="fc-desc">Throw in the monitoring loop jumps to <code>finally</code> → dispose, while workers still call into the cache. Cancel the token in a <code>catch</code>, await workers, then let <code>finally</code> dispose.</div>
+      <div class="fc-loc">Runner.cs:11–38</div>
+    </div>
+    <div class="fc fc-m">
+      <div class="fc-header"><span class="pill pill-m" style="font-size:.63rem">MED</span><span class="fc-id">F-05</span></div>
+      <div class="fc-title">Stringly-typed distribution, silent fallback</div>
+      <div class="fc-desc">Unrecognised <code>Distribution</code> string silently falls through to uniform. Validate in constructor (throw) or replace with an <code>enum DistributionKind</code>.</div>
+      <div class="fc-loc">KeySampler.cs:4, 10, 16–20</div>
+    </div>
+    <div class="fc fc-l">
+      <div class="fc-header"><span class="pill pill-l" style="font-size:.63rem">LOW</span><span class="fc-id">F-06</span></div>
+      <div class="fc-title">Missing EOF newline (Program.cs)</div>
+      <div class="fc-desc">The rewrite still lacks a trailing newline. EditorConfig in the next commit (<code>5bb1fff</code>) should enforce <code>insert_final_newline = true</code> — verify it's active for this file.</div>
+      <div class="fc-loc">Program.cs (EOF)</div>
+    </div>
+    <div class="fc fc-l">
+      <div class="fc-header"><span class="pill pill-l" style="font-size:.63rem">LOW</span><span class="fc-id">F-07</span></div>
+      <div class="fc-title">Mixed indentation in .csproj</div>
+      <div class="fc-desc">Replaced blank line uses a hard tab where the rest of the XML uses spaces. Conflicts with EditorConfig <code>indent_style = space</code>.</div>
+      <div class="fc-loc">Cache.Sandbox.csproj:21</div>
+    </div>
+    <div class="fc fc-n">
+      <div class="fc-header"><span class="pill pill-n" style="font-size:.63rem">NICE</span><span class="fc-id">F-08</span></div>
+      <div class="fc-title">Metrics downcast breaks ICache abstraction</div>
+      <div class="fc-desc">Runner casts to <code>TtlCache&lt;byte[]&gt;</code> for metrics access. Extract <code>IMetricsProvider</code>; let Runner check <code>if (cache is IMetricsProvider mp)</code> — stays decoupled across implementations.</div>
+      <div class="fc-loc">Runner.cs:26</div>
+    </div>
+  </div>
+
+  <!-- ━━━ QUESTIONS ━━━ -->
+  <hr class="divider">
+  <div class="sec-head" id="questions"><span class="sec-num">03 —</span><span class="sec-title">Questions for the Author</span></div>
+
+  <div class="qs-grid">
+
+    <div class="qc">
+      <div class="qc-top">
+        <span class="qc-tag">ownership</span>
+        <span class="qc-num">01</span>
+      </div>
+      <div class="qc-q">Who is meant to own the cache lifetime?</div>
+      <div class="qc-body">
+        <code>Runner.RunAsync</code> disposes a cache it received as a parameter — the caller has no opportunity
+        to ensure cleanup if the method throws before its <code>finally</code>. Is this intentional?
+        If so, the contract should be documented in XML docs (<em>"takes ownership of cache; callee disposes"</em>).
+        If not, flipping to <code>await using var cache = CreateCache(config);</code> in Program.cs with no
+        disposal inside Runner is the safer, idiomatic fix.
+      </div>
+      <div class="qc-ref"><b>→</b> Program.cs:22–23 · Runner.cs:38</div>
+    </div>
+
+    <div class="qc">
+      <div class="qc-top">
+        <span class="qc-tag">correctness</span>
+        <span class="qc-num">02</span>
+      </div>
+      <div class="qc-q">What should happen when the monitoring loop throws?</div>
+      <div class="qc-body">
+        Currently an exception in the <code>while</code> loop leaves workers running against a disposed cache.
+        Should they be hard-cancelled immediately (fastest shutdown), allowed to drain their current operation
+        (safest for metrics accuracy), or does the timeout-based <code>CancellationTokenSource</code> serve as
+        the only intended safety net? The answer shapes whether a <code>catch { cts.Cancel(); await Task.WhenAll(workers); throw; }</code>
+        is the right fix or something more graceful.
+      </div>
+      <div class="qc-ref"><b>→</b> Runner.cs:24–32</div>
+    </div>
+
+    <div class="qc">
+      <div class="qc-top">
+        <span class="qc-tag">intent</span>
+        <span class="qc-num">03</span>
+      </div>
+      <div class="qc-q">Is sharing one <code>byte[]</code> value across all workers intentional?</div>
+      <div class="qc-body">
+        Every worker calls <code>cache.Set(key, value, …)</code> with the same reference — the array allocated
+        on line 7. Concurrent reads of the array contents are safe, but all cache entries point to the same
+        backing object. If a future test mutates the value between sets, results will be silently corrupted.
+        If this is a deliberate allocation-avoidance optimisation for the benchmark, a comment would make that
+        explicit and safe for future maintainers.
+      </div>
+      <div class="qc-ref"><b>→</b> Runner.cs:7, 19</div>
+    </div>
+
+    <div class="qc">
+      <div class="qc-top">
+        <span class="qc-tag">edge case</span>
+        <span class="qc-num">04</span>
+      </div>
+      <div class="qc-q">What is the intended behaviour when <code>HotsetFraction = 0</code>?</div>
+      <div class="qc-body">
+        When <code>HotsetFraction</code> is zero, <code>_hotCount = 0</code>.
+        Then <code>random.Next(0)</code> always returns <code>0</code> (a well-defined .NET behaviour),
+        and <code>random.Next(0, _keySpace)</code> samples the entire key space — effectively uniform.
+        Is this the desired degenerate case? A guard and a meaningful exception or log message would
+        make the boundary explicit: <code>if (_hotCount == 0) throw new ArgumentException("HotsetFraction too small");</code>
+      </div>
+      <div class="qc-ref"><b>→</b> KeySampler.cs:11, 18–19</div>
+    </div>
+
+    <div class="qc">
+      <div class="qc-top">
+        <span class="qc-tag">reproducibility</span>
+        <span class="qc-num">05</span>
+      </div>
+      <div class="qc-q">Is deterministic replay a goal, and is the seed being recorded?</div>
+      <div class="qc-body">
+        <code>config.Seed ?? Environment.TickCount</code> suggests reproducibility is at least considered.
+        But the seed is never printed, so a benchmark run that produces an interesting result can't be
+        re-run identically. If replay is a goal, log the effective seed at startup.
+        If it isn't, <code>Random.Shared</code> (<code>.NET 6+</code>) is thread-safe and removes the
+        seeding ceremony and the sequential-seed dance in the worker <code>Select</code> entirely.
+      </div>
+      <div class="qc-ref"><b>→</b> Runner.cs:8, 13</div>
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    <span>Commit <b>f01471e</b> · CSharpCache / Cache.Sandbox · Aleksander Dokken · Oct 12 2025</span>
+    <span>8 findings (2 high · 3 med · 2 low · 1 nice) · 5 questions · reviewed 2026-05-27</span>
+  </footer>
+
+</main>
+</body>
+</html>

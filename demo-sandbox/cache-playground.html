@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSharpCache — Tuning Lab</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #070604;
+      --surface:      #0d0b07;
+      --surface2:     #141109;
+      --border:       #2b2008;
+      --amber:        #ffb300;
+      --amber-dim:    #7a5500;
+      --amber-bright: #ffd54f;
+      --amber-glow:   rgba(255,179,0,0.10);
+      --green:        #39ff84;
+      --red:          #ff4444;
+      --blue:         #3fa9ff;
+      /* text: considerably brighter than before */
+      --text:         #d4a030;
+      --text-mid:     #a07828;
+      --text-dim:     #6a5018;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* Scanlines — lighter so they don't kill readability */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.10) 3px,
+        rgba(0,0,0,0.10) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Vignette */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.45) 100%);
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 52px 1fr 58px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .header-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--amber-bright);
+      text-shadow: 0 0 16px var(--amber), 0 0 40px rgba(255,179,0,0.25);
+    }
+
+    .header-sep { width: 1px; height: 18px; background: var(--border); }
+
+    .header-sub {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--text-mid);          /* was text-dim, now readable */
+      text-transform: uppercase;
+    }
+
+    .header-badge {
+      margin-left: auto;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--text-mid);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+    }
+
+    /* ── Main ── */
+    .main {
+      display: grid;
+      grid-template-columns: 272px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      padding: 20px;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .ctrl-section {
+      font-family: 'Oswald', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.4em;
+      color: var(--text-mid);          /* readable */
+      text-transform: uppercase;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ctrl-group { display: flex; flex-direction: column; gap: 10px; }
+
+    .ctrl-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .ctrl-name {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text);              /* bright enough to read */
+    }
+
+    .ctrl-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--amber-bright);
+      text-shadow: 0 0 8px var(--amber);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+      border-radius: 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px;
+      background: var(--amber);
+      border: 1px solid var(--bg);
+      box-shadow: 0 0 8px var(--amber), 0 0 20px rgba(255,179,0,0.4);
+      cursor: pointer;
+      border-radius: 0;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 13px; height: 13px;
+      background: var(--amber);
+      border: 1px solid var(--bg);
+      box-shadow: 0 0 8px var(--amber);
+      cursor: pointer; border-radius: 0;
+    }
+
+    /* Select */
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--amber-dim);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    select {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--amber-bright);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      outline: none;
+    }
+    select:focus { border-color: var(--amber-dim); }
+    select option { background: #141109; color: var(--amber-bright); }
+
+    .divider { height: 1px; background: var(--border); }
+
+    /* Run button */
+    .btn-run {
+      padding: 11px;
+      background: transparent;
+      border: 1px solid var(--amber-dim);
+      color: var(--text);
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-run:hover {
+      border-color: var(--amber);
+      color: var(--amber-bright);
+      background: var(--amber-glow);
+      box-shadow: 0 0 20px rgba(255,179,0,0.15);
+      text-shadow: 0 0 10px var(--amber);
+    }
+    .btn-run:active { opacity: 0.7; }
+    .btn-run.running {
+      color: var(--amber);
+      border-color: var(--amber);
+      animation: pulse-btn 0.6s infinite alternate;
+    }
+    @keyframes pulse-btn {
+      from { box-shadow: 0 0 8px rgba(255,179,0,0.15); }
+      to   { box-shadow: 0 0 28px rgba(255,179,0,0.5); }
+    }
+
+    .ctrl-note {
+      font-size: 11px;
+      color: var(--text-mid);          /* readable */
+      line-height: 1.8;
+      letter-spacing: 0.04em;
+    }
+    .ctrl-note b { color: var(--amber-bright); font-weight: normal; }
+
+    /* ── Charts ── */
+    .charts {
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .chart-card {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .chart-label {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-mid);          /* readable */
+      min-width: 150px;
+    }
+
+    .chart-kpi {
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      min-width: 90px;
+    }
+    .chart-kpi.c-green { color: var(--green); text-shadow: 0 0 10px var(--green); }
+    .chart-kpi.c-red   { color: var(--red);   text-shadow: 0 0 10px var(--red);   }
+    .chart-kpi.c-blue  { color: var(--blue);  text-shadow: 0 0 10px var(--blue);  }
+
+    .chart-substat {
+      font-size: 10px;
+      color: var(--text-mid);
+      letter-spacing: 0.08em;
+      margin-left: auto;
+    }
+    .chart-substat span { color: var(--text); }
+
+    .chart-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .btn-copy {
+      padding: 9px 18px;
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid #1e3a24;
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-copy:hover {
+      border-color: var(--green);
+      background: rgba(57,255,132,0.05);
+      box-shadow: 0 0 14px rgba(57,255,132,0.2);
+      text-shadow: 0 0 8px var(--green);
+    }
+    .btn-copy.ok {
+      color: var(--amber-bright);
+      border-color: var(--amber-dim);
+      text-shadow: 0 0 8px var(--amber);
+    }
+
+    .footer-code {
+      font-size: 11px;
+      color: var(--text-mid);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+    }
+    .footer-code .kw  { color: #5a9fc0; }
+    .footer-code .typ { color: #c8885a; }
+    .footer-code .num { color: var(--amber-bright); }
+    .footer-code .str { color: #55dd88; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">CSHARPCACHE</div>
+    <div class="header-sep"></div>
+    <div class="header-sub">Tuning Laboratory</div>
+    <div class="header-badge">Zipfian α=1.0 · 100k requests</div>
+  </header>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Controls -->
+    <aside class="controls">
+      <div class="ctrl-section">Parameters</div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span class="ctrl-name">maxEntries</span>
+          <span class="ctrl-val" id="vMax">500</span>
+        </div>
+        <input type="range" id="slMax" min="100" max="100000" value="500" step="100">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          <span class="ctrl-name">ttlSeconds</span>
+          <span class="ctrl-val" id="vTtl">120</span>
+        </div>
+        <input type="range" id="slTtl" min="1" max="3600" value="120" step="1">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label" style="margin-bottom:6px">
+          <span class="ctrl-name">evictionPolicy</span>
+        </div>
+        <div class="select-wrap">
+          <select id="selPolicy">
+            <option value="LRU">LRU  —  Least Recently Used</option>
+            <option value="LFU">LFU  —  Least Frequently Used</option>
+            <option value="FIFO">FIFO  —  First In, First Out</option>
+            <option value="Random">Random  —  Random Eviction</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <button class="btn-run" id="btnRun">▶ Run Simulation</button>
+
+      <div class="ctrl-note">
+        <b>Population:</b> 5 000 unique items<br>
+        <b>Requests:</b> 100 000 synthetic<br>
+        <b>Rate:</b> 1 000 req / sec model<br>
+        <b>Batches:</b> 50 × 2 000 requests<br>
+        <b>Tip:</b> drag sliders — reruns live
+      </div>
+    </aside>
+
+    <!-- Charts -->
+    <div class="charts">
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span class="chart-label">Hit Rate</span>
+          <span class="chart-kpi c-green" id="kHit">—</span>
+          <span class="chart-substat" id="sHit"></span>
+        </div>
+        <div class="chart-wrap" id="wHit"><canvas id="cHit"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span class="chart-label">Evictions / sec</span>
+          <span class="chart-kpi c-red" id="kEv">—</span>
+          <span class="chart-substat" id="sEv"></span>
+        </div>
+        <div class="chart-wrap" id="wEv"><canvas id="cEv"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span class="chart-label">Working-Set Size</span>
+          <span class="chart-kpi c-blue" id="kWs">—</span>
+          <span class="chart-substat" id="sWs"></span>
+        </div>
+        <div class="chart-wrap" id="wWs"><canvas id="cWs"></canvas></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <button class="btn-copy" id="btnCopy">⊡ Copy as C# Initializer</button>
+    <div class="footer-code" id="footerCode">
+      Adjust parameters and run to generate config
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Simulation constants
+//  Population is FIXED at 5000 — independent of maxEntries.
+//  This guarantees evictions are visible for small cache sizes
+//  and disappear as maxEntries approaches the population.
+// ═══════════════════════════════════════════════════════════════
+
+const POPULATION = 5000;
+const TOTAL_REQ  = 100000;
+const BATCHES    = 50;
+const BATCH_SZ   = TOTAL_REQ / BATCHES;   // 2000
+const SIM_RATE   = 1000;                  // req/sec → total time = 100 s
+
+// ── Zipf sampler (precomputed CDF, binary search) ───────────────
+function makeZipf(n, alpha = 1.0) {
+  const H = new Float64Array(n);
+  let cum = 0;
+  for (let i = 0; i < n; i++) { cum += 1 / (i + 1) ** alpha; H[i] = cum; }
+  const total = cum;
+  return () => {
+    const r = Math.random() * total;
+    let lo = 0, hi = n - 1;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; H[mid] < r ? lo = mid + 1 : hi = mid; }
+    return lo;
+  };
+}
+
+// ── LRU ─────────────────────────────────────────────────────────
+function makeLRU(max) {
+  const m = new Map(); // key → insertTime, Map order = LRU order
+  return {
+    get(k, t, ttl) {
+      if (!m.has(k)) return false;
+      const ins = m.get(k);
+      if (t - ins > ttl) { m.delete(k); return false; }
+      m.delete(k); m.set(k, ins); // move to tail = promote
+      return true;
+    },
+    put(k, t) {
+      if (m.has(k)) { m.delete(k); m.set(k, t); return false; }
+      let ev = false;
+      if (m.size >= max) { m.delete(m.keys().next().value); ev = true; }
+      m.set(k, t); return ev;
+    },
+    size: () => m.size
+  };
+}
+
+// ── LFU ─────────────────────────────────────────────────────────
+function makeLFU(max) {
+  const freq = new Map(), ins = new Map(), byFreq = new Map();
+  let minF = 0;
+  const promote = k => {
+    const f = freq.get(k);
+    freq.set(k, f + 1);
+    byFreq.get(f).delete(k);
+    const nf = f + 1;
+    if (!byFreq.has(nf)) byFreq.set(nf, new Set());
+    byFreq.get(nf).add(k);
+    if (byFreq.get(f).size === 0 && f === minF) minF++;
+  };
+  return {
+    get(k, t, ttl) {
+      if (!freq.has(k)) return false;
+      if (t - ins.get(k) > ttl) {
+        byFreq.get(freq.get(k)).delete(k); freq.delete(k); ins.delete(k);
+        return false;
+      }
+      promote(k); return true;
+    },
+    put(k, t) {
+      if (freq.has(k)) { ins.set(k, t); promote(k); return false; }
+      let ev = false;
+      if (freq.size >= max) {
+        const s = byFreq.get(minF);
+        const ek = s.values().next().value;
+        s.delete(ek); freq.delete(ek); ins.delete(ek); ev = true;
+      }
+      freq.set(k, 1); ins.set(k, t);
+      if (!byFreq.has(1)) byFreq.set(1, new Set());
+      byFreq.get(1).add(k);
+      minF = 1; return ev;
+    },
+    size: () => freq.size
+  };
+}
+
+// ── FIFO ────────────────────────────────────────────────────────
+function makeFIFO(max) {
+  const set = new Set(), q = [], tm = new Map();
+  return {
+    get(k, t, ttl) {
+      if (!set.has(k)) return false;
+      if (t - tm.get(k) > ttl) { set.delete(k); tm.delete(k); return false; }
+      return true;
+    },
+    put(k, t) {
+      if (set.has(k)) { tm.set(k, t); return false; }
+      let ev = false;
+      // drain expired ghost entries from queue head before evicting
+      while (set.size >= max && q.length > 0) {
+        const old = q.shift();
+        if (set.has(old)) { set.delete(old); tm.delete(old); ev = true; break; }
+      }
+      set.add(k); q.push(k); tm.set(k, t); return ev;
+    },
+    size: () => set.size
+  };
+}
+
+// ── Random ──────────────────────────────────────────────────────
+function makeRandom(max) {
+  const m = new Map(), ks = [], tm = new Map(); // m: key→index in ks
+  const evict = () => {
+    const ri = Math.random() * ks.length | 0;
+    const ek = ks[ri];
+    // swap-and-pop
+    ks[ri] = ks[ks.length - 1];
+    if (ks[ri] !== undefined) m.set(ks[ri], ri);
+    ks.pop(); m.delete(ek); tm.delete(ek);
+    return ek;
+  };
+  return {
+    get(k, t, ttl) {
+      if (!m.has(k)) return false;
+      if (t - tm.get(k) > ttl) { evict(); return false; } // lazy TTL expire
+      return true;
+    },
+    put(k, t) {
+      if (m.has(k)) { tm.set(k, t); return false; }
+      let ev = false;
+      if (ks.length >= max) { evict(); ev = true; }
+      m.set(k, ks.length); ks.push(k); tm.set(k, t); return ev;
+    },
+    size: () => ks.length
+  };
+}
+
+function makeCache(policy, max) {
+  return { LRU: makeLRU, LFU: makeLFU, FIFO: makeFIFO, Random: makeRandom }[policy](max);
+}
+
+// ── Main simulate ────────────────────────────────────────────────
+function simulate(maxEntries, ttlSeconds, policy) {
+  const sample = makeZipf(POPULATION);
+  const cache  = makeCache(policy, maxEntries);
+
+  const hitRates = [], evsPerSec = [], workingSets = [];
+  let totalHits = 0, totalEvs = 0;
+
+  for (let b = 0; b < BATCHES; b++) {
+    let bHits = 0, bEvs = 0;
+    const t0 = (b * BATCH_SZ) / SIM_RATE;
+    const dt = BATCH_SZ / SIM_RATE;
+
+    for (let i = 0; i < BATCH_SZ; i++) {
+      const t = t0 + (i / BATCH_SZ) * dt;
+      const k = sample();
+      if (cache.get(k, t, ttlSeconds)) {
+        bHits++;
+      } else {
+        if (cache.put(k, t)) bEvs++;
+      }
+    }
+
+    totalHits += bHits;
+    totalEvs  += bEvs;
+    hitRates.push(bHits / BATCH_SZ);
+    evsPerSec.push(bEvs / dt);
+    workingSets.push(cache.size());
+  }
+
+  return {
+    hitRates, evsPerSec, workingSets,
+    overallHitRate:    totalHits / TOTAL_REQ,
+    overallEvsPerSec:  totalEvs  / (TOTAL_REQ / SIM_RATE),
+    finalWorkingSet:   workingSets[workingSets.length - 1]
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Chart rendering
+// ═══════════════════════════════════════════════════════════════
+
+function syncCanvas(canvas) {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  if (rect.width > 0 && rect.height > 0) {
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+  }
+}
+
+function drawBars(canvas, data, color, maxY, revealN, axisLabel) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  if (W === 0 || H === 0 || data.length === 0) return;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const dpr     = window.devicePixelRatio || 1;
+  const n       = data.length;
+  const padLeft = 44 * dpr;   // space for y-axis labels
+  const padRight = 6 * dpr;
+  const padTop   = 6 * dpr;
+  const padBot   = 4 * dpr;
+  const usableW  = W - padLeft - padRight;
+  const usableH  = H - padTop  - padBot;
+
+  // ── Y-axis labels ──────────────────────────────────────────
+  const ticks = 4;
+  ctx.font      = `${10 * dpr}px 'Share Tech Mono', monospace`;
+  ctx.textAlign = 'right';
+
+  for (let i = 0; i <= ticks; i++) {
+    const frac = i / ticks;
+    const y    = Math.round(padTop + usableH * (1 - frac));
+    const val  = maxY * frac;
+
+    // tick line across full width
+    ctx.strokeStyle = i === 0 ? 'rgba(255,179,0,0.20)' : 'rgba(255,179,0,0.07)';
+    ctx.lineWidth   = i === 0 ? 1 : 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y + 0.5);
+    ctx.lineTo(W, y + 0.5);
+    ctx.stroke();
+
+    // label
+    ctx.fillStyle = 'rgba(160,120,40,0.85)';
+    ctx.fillText(axisLabel(val), padLeft - 4 * dpr, y + 3 * dpr);
+  }
+
+  // ── Bars ────────────────────────────────────────────────────
+  const barW  = usableW / n;
+  const gap   = Math.max(1, barW * 0.18);
+  const count = Math.min(revealN, n);
+
+  for (let i = 0; i < count; i++) {
+    const v  = maxY > 0 ? Math.max(0, data[i] / maxY) : 0;
+    const x  = padLeft + i * barW + gap / 2;
+    const bw = Math.max(1, barW - gap);
+    const bh = Math.max(1 * dpr, v * usableH);
+    const y  = padTop + usableH - bh;
+
+    const isLast = i === count - 1;
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = isLast ? 12 * dpr : 0;
+
+    const grad = ctx.createLinearGradient(0, y, 0, y + bh);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, color + '28');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, bw, bh);
+  }
+  ctx.shadowBlur = 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  State & animation
+// ═══════════════════════════════════════════════════════════════
+
+let results    = null;
+let revealPos  = 0;
+let rafId      = null;
+let debounceId = null;
+
+function fmt(n)      { return Math.round(n).toLocaleString('en-US'); }
+function fmtPct(v)   { return (v * 100).toFixed(1) + '%'; }
+function fmtEvs(v)   { return v < 1 ? v.toFixed(1) : fmt(v); }
+
+// Per-chart config
+const CHARTS = [
+  {
+    cv: 'cHit', wrapId: 'wHit', key: 'hitRates',
+    kpi: 'kHit', sub: 'sHit', color: '#39ff84',
+    maxFn:    ()  => 1,
+    axisLbl:  v   => fmtPct(v),
+    kpiFmt:   ()  => fmtPct(results.overallHitRate),
+    subFmt:   (d) => {
+      const mn = Math.min(...d), mx = Math.max(...d);
+      return `batch min <span>${fmtPct(mn)}</span>  max <span>${fmtPct(mx)}</span>`;
+    }
+  },
+  {
+    cv: 'cEv', wrapId: 'wEv', key: 'evsPerSec',
+    kpi: 'kEv', sub: 'sEv', color: '#ff4444',
+    maxFn:    (d) => Math.max(...d) * 1.18 || 1,
+    axisLbl:  v   => fmtEvs(v),
+    kpiFmt:   ()  => fmtEvs(results.overallEvsPerSec),
+    subFmt:   (d) => {
+      const mx = Math.max(...d);
+      const tot = results.overallEvsPerSec * (TOTAL_REQ / SIM_RATE);
+      return `total <span>${fmt(tot)}</span>  peak <span>${fmtEvs(mx)}/s</span>`;
+    }
+  },
+  {
+    cv: 'cWs', wrapId: 'wWs', key: 'workingSets',
+    kpi: 'kWs', sub: 'sWs', color: '#3fa9ff',
+    maxFn:    (d) => Math.max(Math.max(...d) * 1.18, 1),
+    axisLbl:  v   => fmt(v),
+    kpiFmt:   ()  => fmt(results.finalWorkingSet),
+    subFmt:   (d) => {
+      const fillPct = (results.finalWorkingSet /
+        +document.getElementById('slMax').value * 100).toFixed(0);
+      return `capacity fill <span>${fillPct}%</span>  population <span>${POPULATION.toLocaleString()}</span>`;
+    }
+  }
+];
+
+function redrawAll(reveal) {
+  if (!results) return;
+  CHARTS.forEach(({ cv, key, color, maxFn, axisLbl, kpi, sub, kpiFmt, subFmt }) => {
+    const data   = results[key];
+    const canvas = document.getElementById(cv);
+    syncCanvas(canvas);
+    const maxY = maxFn(data);
+    drawBars(canvas, data, color, maxY, reveal, axisLbl);
+
+    // KPIs: show overall stat (not per-batch) — more informative
+    if (reveal >= BATCHES) {
+      document.getElementById(kpi).textContent = kpiFmt();
+      document.getElementById(sub).innerHTML   = subFmt(data);
+    } else {
+      // during animation: show current batch value
+      const idx = Math.min(Math.max(0, reveal - 1), data.length - 1);
+      const fmt2 = axisLbl === CHARTS[0].axisLbl
+        ? fmtPct : fmtEvs;
+      document.getElementById(kpi).textContent = axisLbl(data[idx]);
+    }
+  });
+}
+
+function animate() {
+  revealPos = Math.min(revealPos + 2.0, BATCHES);
+  redrawAll(Math.ceil(revealPos));
+  if (revealPos < BATCHES) {
+    rafId = requestAnimationFrame(animate);
+  } else {
+    redrawAll(BATCHES); // final pass with overall KPIs
+  }
+}
+
+function runSim() {
+  const max    = +document.getElementById('slMax').value;
+  const ttl    = +document.getElementById('slTtl').value;
+  const policy = document.getElementById('selPolicy').value;
+
+  if (rafId) cancelAnimationFrame(rafId);
+
+  const btn = document.getElementById('btnRun');
+  btn.classList.add('running');
+
+  // yield to browser for button repaint, then run sync
+  setTimeout(() => {
+    results   = simulate(max, ttl, policy);
+    revealPos = 0;
+    btn.classList.remove('running');
+    rafId = requestAnimationFrame(animate);
+    updateFooter();
+  }, 12);
+}
+
+function scheduleSim() {
+  clearTimeout(debounceId);
+  debounceId = setTimeout(runSim, 80);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI helpers
+// ═══════════════════════════════════════════════════════════════
+
+function updateSliderFill(sl) {
+  const pct = ((sl.value - sl.min) / (sl.max - sl.min)) * 100;
+  sl.style.background =
+    `linear-gradient(to right, #ffb300 ${pct}%, #2b2008 ${pct}%)`;
+}
+
+function updateValues() {
+  document.getElementById('vMax').textContent =
+    fmt(+document.getElementById('slMax').value);
+  document.getElementById('vTtl').textContent =
+    fmt(+document.getElementById('slTtl').value);
+}
+
+function updateFooter() {
+  const max    = +document.getElementById('slMax').value;
+  const ttl    = +document.getElementById('slTtl').value;
+  const policy = document.getElementById('selPolicy').value;
+
+  document.getElementById('footerCode').innerHTML =
+    `<span class="kw">var</span> options = <span class="kw">new</span> ` +
+    `<span class="typ">CacheOptions</span>(` +
+    `maxEntries: <span class="num">${max}</span>, ` +
+    `ttl: <span class="typ">TimeSpan</span>.FromSeconds(<span class="num">${ttl}</span>), ` +
+    `evictionPolicy: <span class="typ">EvictionPolicy</span>.<span class="str">${policy}</span>` +
+    `); <span style="color:var(--text-dim)">// hit rate ${results ? fmtPct(results.overallHitRate) : '?'}</span>`;
+}
+
+function copyCS() {
+  const max    = +document.getElementById('slMax').value;
+  const ttl    = +document.getElementById('slTtl').value;
+  const policy = document.getElementById('selPolicy').value;
+  const hr     = results ? ` // expected hit rate: ~${fmtPct(results.overallHitRate)}` : '';
+
+  const code =
+`var options = new CacheOptions(
+    maxEntries: ${max},
+    ttl: TimeSpan.FromSeconds(${ttl}),
+    evictionPolicy: EvictionPolicy.${policy}
+);${hr}`;
+
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('btnCopy');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied to clipboard';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 2200);
+  }).catch(() => { alert(code); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Wire-up
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('btnRun').addEventListener('click', runSim);
+document.getElementById('btnCopy').addEventListener('click', copyCS);
+document.getElementById('selPolicy').addEventListener('change', scheduleSim);
+
+['slMax', 'slTtl'].forEach(id => {
+  const sl = document.getElementById(id);
+  sl.addEventListener('input', () => {
+    updateSliderFill(sl);
+    updateValues();
+    scheduleSim();
+  });
+  updateSliderFill(sl);
+});
+
+// Keep canvases sharp on resize
+const ro = new ResizeObserver(() => { if (results) redrawAll(BATCHES); });
+CHARTS.forEach(c => ro.observe(document.getElementById(c.wrapId)));
+
+// Init
+updateValues();
+window.addEventListener('load', () => setTimeout(runSim, 120));
+</script>
+</body>
+</html>

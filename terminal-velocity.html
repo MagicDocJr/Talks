@@ -1,0 +1,1527 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Min arbeidsflyt: terminal & Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:ital,wght@0,200..700;1,200..700&family=JetBrains+Mono:wght@300..700&family=Major+Mono+Display&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #1e1e1e;
+    --bg-2:      #181818;
+    --panel:     #0c0c0c;
+    --tabbar:    #2b2b2b;
+    --tab:       #323232;
+    --tab-act:   #0c0c0c;
+    --line:      #2d2d2d;
+    --line-2:    #3a3a3a;
+    --fg:        #cccccc;
+    --dim:       #7a7a7a;
+    --amber:     #e95420;
+    --amber-2:   #f08762;
+    --purple:    #772953;
+    --green:     #4e9a06;
+    --green-2:   #8ae234;
+    --cyan:      #06989a;
+    --cyan-2:    #34e2e2;
+    --magenta:   #75507b;
+    --magenta-2: #ad7fa8;
+    --red:       #cc0000;
+    --red-2:     #ef2929;
+    --blue:      #3465a4;
+    --blue-2:    #729fcf;
+    --yellow:    #c4a000;
+    --yellow-2:  #fce94f;
+    --mono:      "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
+    --display:   "Major Mono Display", "Cascadia Code", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-weight: 400;
+    font-size: 15px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(1400px 900px at 50% 110%, rgba(233,84,32,0.05), transparent 55%),
+      radial-gradient(900px 700px at 0% 0%, rgba(119,41,83,0.07), transparent 60%),
+      linear-gradient(180deg, #232323 0%, #1a1a1a 100%);
+    z-index: -3;
+  }
+
+  .scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.012) 0,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: overlay;
+  }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 51; opacity: 0.04;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .stage {
+    position: fixed; inset: 0;
+    display: grid; place-items: center;
+    padding: 18px;
+  }
+  .window {
+    width: min(1500px, 100%);
+    height: min(900px, calc(100vh - 36px));
+    background: var(--panel);
+    border: 1px solid #000;
+    border-radius: 8px;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 32px 1fr 24px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 30px 70px rgba(0,0,0,0.55);
+    position: relative;
+  }
+  :fullscreen .stage,
+  :-webkit-full-screen .stage { padding: 0; }
+  :fullscreen .window,
+  :-webkit-full-screen .window {
+    width: 100vw; height: 100vh;
+    max-width: none; max-height: none;
+    border-radius: 0; border: none;
+  }
+
+  /* Titlebar */
+  .titlebar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    background: var(--tabbar);
+    color: var(--fg);
+    border-bottom: 1px solid #000;
+    user-select: none;
+  }
+  .tabs {
+    display: flex;
+    align-items: flex-end;
+    height: 32px;
+    padding-left: 8px;
+    gap: 0;
+  }
+  .tab-item {
+    height: 26px;
+    margin-top: 6px;
+    padding: 0 14px 0 12px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--tab);
+    color: #b0b0b0;
+    font-size: 12px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    position: relative;
+    max-width: 260px;
+  }
+  .tab-item.active {
+    background: var(--tab-act);
+    color: var(--fg);
+    height: 28px;
+    margin-top: 4px;
+    box-shadow: 0 -1px 0 #000;
+  }
+  .tab-item.active::after {
+    content: "";
+    position: absolute; left: 10px; right: 10px; top: 4px; height: 2px;
+    background: var(--amber);
+    border-radius: 2px;
+  }
+  .tab-ico {
+    width: 14px; height: 14px;
+    background: var(--amber);
+    color: #fff; font-size: 9px; font-weight: 700;
+    border-radius: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tab-close { color: var(--dim); margin-left: 6px; font-size: 11px; }
+  .new-tab {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; margin-left: 6px; margin-top: 6px;
+    color: var(--dim); font-size: 14px;
+    border-radius: 4px;
+  }
+  .win-controls { display: flex; height: 32px; }
+  .win-btn {
+    width: 46px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--fg); font-size: 11px;
+  }
+  .win-btn.close:hover { background: #c42b1c; }
+  .win-btn:hover { background: rgba(255,255,255,0.06); }
+
+  /* Statusbar */
+  .statusbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 14px;
+    background: var(--purple);
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .statusbar .seg { display: flex; align-items: center; gap: 6px; }
+  .statusbar .seg.right { margin-left: auto; }
+  .statusbar .k { background: rgba(0,0,0,0.25); padding: 0 6px; border-radius: 2px; }
+  .blink { animation: blink 1.05s steps(2, start) infinite; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* Viewport */
+  .viewport {
+    position: relative;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .slide {
+    position: absolute; inset: 0;
+    padding: 20px 56px 76px;
+    display: none;
+    overflow: hidden;
+  }
+  :fullscreen .slide,
+  :-webkit-full-screen .slide { padding: 28px 80px 104px; font-size: 1.05em; }
+
+  .slide.active { display: block; animation: slidein 420ms cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes slidein {
+    from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+  .slide .reveal { opacity: 0; transform: translateY(8px); }
+  .slide.active .reveal { animation: reveal 520ms cubic-bezier(.2,.7,.2,1) forwards; }
+  .slide.active .reveal:nth-child(1) { animation-delay: 60ms; }
+  .slide.active .reveal:nth-child(2) { animation-delay: 130ms; }
+  .slide.active .reveal:nth-child(3) { animation-delay: 200ms; }
+  .slide.active .reveal:nth-child(4) { animation-delay: 270ms; }
+  .slide.active .reveal:nth-child(5) { animation-delay: 340ms; }
+  .slide.active .reveal:nth-child(6) { animation-delay: 410ms; }
+  .slide.active .reveal:nth-child(7) { animation-delay: 480ms; }
+  .slide.active .reveal:nth-child(8) { animation-delay: 550ms; }
+  @keyframes reveal { to { opacity: 1; transform: none; } }
+
+  /* Typography */
+  .eyebrow {
+    color: var(--amber);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--amber); }
+  h1.display {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(42px, 6vw, 84px);
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    margin: 14px 0 0;
+    color: var(--fg);
+  }
+  h1.display em { font-style: normal; color: var(--amber); }
+  h2.section {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(28px, 3.4vw, 44px);
+    letter-spacing: -0.01em;
+    margin: 8px 0 6px;
+  }
+  h2 .num { color: var(--dim); font-weight: 400; margin-right: 12px; }
+  .lede { color: var(--dim); max-width: 78ch; font-size: 15px; line-height: 1.55; }
+
+  .kbd {
+    font-family: var(--mono);
+    background: #1b1b1b; border: 1px solid var(--line-2);
+    border-bottom-width: 2px;
+    padding: 1px 7px; border-radius: 4px;
+    font-size: 12px; color: var(--fg);
+  }
+  .tag {
+    display: inline-block;
+    border: 1px solid var(--line-2);
+    color: var(--dim);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .cursor {
+    display: inline-block; width: 0.55em; height: 1em;
+    background: var(--amber); vertical-align: -0.12em;
+    margin-left: 6px;
+    animation: blink 1.05s steps(2, start) infinite;
+    box-shadow: 0 0 12px rgba(233,84,32,0.55);
+  }
+
+  /* Layout helpers */
+  .grid { display: grid; gap: 18px; margin-top: 22px; }
+  .grid.cols-2 { grid-template-columns: 1.05fr 0.95fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .detail {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 32px;
+    height: calc(100% - 60px);
+  }
+  .detail .left, .detail .right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .bullets { margin: 18px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .bullets li {
+    color: var(--fg); font-size: 14px; line-height: 1.5;
+    padding-left: 22px; position: relative;
+  }
+  .bullets li::before { content: "▸"; position: absolute; left: 0; top: 0; color: var(--amber); }
+  .bullets li b { color: var(--amber); font-weight: 600; }
+  .bullets li .mute { color: var(--dim); }
+
+  .card {
+    border: 1px solid var(--line-2);
+    background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(0,0,0,0.18));
+    border-radius: 6px;
+    padding: 16px 18px;
+    position: relative;
+  }
+  .card .corner {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(to right, var(--amber), transparent 10%) top left / 18px 1px no-repeat,
+      linear-gradient(to bottom, var(--amber), transparent 10%) top left / 1px 18px no-repeat;
+    opacity: 0.7;
+  }
+  .card h3 {
+    font-size: 17px; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card h3 .glyph { color: var(--amber); font-family: var(--mono); }
+  .card .role {
+    color: var(--dim); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .card p { margin: 0; color: var(--dim); font-size: 12.5px; line-height: 1.5; }
+
+  /* Terminal */
+  .term {
+    background: #0c0c0c;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: 14px 18px 16px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--fg);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    overflow: hidden;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  :fullscreen .term, :-webkit-full-screen .term { font-size: 14.5px; }
+  .term .line { white-space: pre; }
+  .term .p { color: var(--amber); }
+  .term .u { color: var(--cyan-2); }
+  .term .d { color: var(--magenta-2); }
+  .term .g { color: var(--green-2); }
+  .term .r { color: var(--red-2); }
+  .term .b { color: var(--blue-2); }
+  .term .m { color: var(--dim); }
+  .term .y { color: var(--yellow-2); }
+  .term hr { border: none; border-top: 1px dashed var(--line-2); margin: 8px 0; }
+  .term .header {
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--dim); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    border-bottom: 1px dashed var(--line-2);
+    padding-bottom: 6px; margin-bottom: 8px;
+  }
+  .term .header span { color: var(--amber); }
+
+  /* Zellij panes */
+  .panes {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+  }
+  .pane {
+    background: #0c0c0c;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    overflow: hidden;
+    position: relative;
+  }
+  .pane.active { border-color: var(--amber); box-shadow: 0 0 0 1px rgba(233,84,32,0.3); }
+  .pane .ptab {
+    position: absolute; top: -8px; left: 10px;
+    background: var(--panel);
+    padding: 0 6px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .pane.active .ptab { color: var(--amber); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+  .stat { border-left: 2px solid var(--amber); padding: 6px 14px; }
+  .stat .n { font-family: var(--mono); font-weight: 700; font-size: 32px; line-height: 1; color: var(--fg); }
+  .stat .l { color: var(--dim); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 6px; }
+
+  /* Flow */
+  .flow {
+    margin-top: 22px;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 8px; align-items: stretch;
+  }
+  .node {
+    border: 1px solid var(--line-2); border-radius: 6px;
+    padding: 12px 14px; background: #0f0f0f;
+  }
+  .node .step { color: var(--amber); font-size: 10px; letter-spacing: 0.2em; }
+  .node .what { font-size: 14px; margin-top: 4px; font-weight: 600; }
+  .node .who { font-size: 11px; color: var(--dim); margin-top: 4px; }
+  .arrow { align-self: center; text-align: center; color: var(--amber); }
+
+  /* Title slide */
+  .title-slide {
+    grid-template-rows: auto 1fr auto;
+    padding: 48px 64px 56px;
+  }
+  .title-slide.active { display: grid; }
+  .ascii {
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.05;
+    white-space: pre;
+    opacity: 0.9;
+    text-shadow: 0 0 14px rgba(233,84,32,0.25);
+  }
+  .title-center { align-self: center; }
+  .title-foot {
+    display: flex; justify-content: space-between; align-items: end;
+    color: var(--dim);
+    font-size: 12px;
+    border-top: 1px dashed var(--line-2);
+    padding-top: 14px;
+  }
+  .title-foot b { color: var(--fg); font-weight: 600; }
+
+  /* Progress / kb hint */
+  .progress { display: flex; gap: 3px; align-items: center; }
+  .progress .seg-bar { width: 14px; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .progress .seg-bar.on { background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.5); }
+
+  .kbhint {
+    position: absolute; bottom: 14px; right: 22px;
+    color: var(--dim); font-size: 11px;
+    display: flex; gap: 8px; align-items: center;
+    z-index: 4;
+  }
+
+  /* End slide */
+  .endbig {
+    font-family: var(--display);
+    font-size: clamp(48px, 6.4vw, 96px);
+    line-height: 0.95;
+    color: var(--fg);
+  }
+  .endbig em { color: var(--amber); font-style: normal; }
+
+  code.shell { color: var(--green-2); }
+  code.shell .p { color: var(--amber); }
+  code.shell .f { color: var(--magenta-2); }
+  code.shell .s { color: var(--cyan-2); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .quote {
+    font-size: 22px; line-height: 1.4; color: var(--fg);
+    border-left: 2px solid var(--amber);
+    padding: 6px 0 6px 18px;
+    max-width: 60ch;
+  }
+  .quote .who { color: var(--dim); font-size: 12px; margin-top: 12px; display: block; }
+
+  .term::-webkit-scrollbar, .pane::-webkit-scrollbar { display: none; }
+
+  /* Live demo slide */
+  .demo-slide { display: none; }
+  .demo-slide.active { display: flex !important; flex-direction: column; }
+  .demo-slide .eyebrow { margin: 0; }
+  .demo-slide h2.section { font-size: clamp(20px, 2.2vw, 28px); margin: 4px 0 2px; }
+
+  .demo-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .demo-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    color: var(--dim);
+    letter-spacing: 0.04em;
+  }
+  .demo-chip b { color: var(--fg); font-weight: 600; }
+  .demo-chip.accent { border-color: var(--amber); color: var(--fg); }
+  .demo-chip.accent b { color: var(--amber); }
+
+  .demo-term-frame {
+    margin-top: 8px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0c0c0c;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.02);
+    position: relative;
+  }
+  .demo-term-frame .frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #000;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.08em;
+  }
+  .demo-term-frame .frame-bar .dots { display: flex; gap: 6px; }
+  .demo-term-frame .frame-bar .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #444;
+  }
+  .demo-term-frame .frame-bar .dot.r { background: #ef5350; }
+  .demo-term-frame .frame-bar .dot.y { background: #ffb74d; }
+  .demo-term-frame .frame-bar .dot.g { background: #66bb6a; }
+  .demo-term-frame .frame-bar .label { color: var(--fg); font-family: var(--mono); }
+  .demo-term-frame .frame-bar .status {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono);
+    color: var(--green-2);
+  }
+  .demo-term-frame .frame-bar .status .dot {
+    width: 8px; height: 8px; background: var(--green-2);
+    box-shadow: 0 0 8px var(--green-2);
+  }
+
+  .demo-term-frame .term-host {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .demo-term-frame iframe {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: 0;
+    background: #0c0c0c;
+    z-index: 2;
+  }
+  .demo-term-frame .fallback {
+    position: absolute; inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    font-family: var(--mono);
+    color: var(--fg);
+    background: #0c0c0c;
+  }
+  .demo-term-frame .fallback .box {
+    max-width: 640px;
+    text-align: left;
+  }
+  .demo-term-frame .fallback h3 {
+    color: var(--amber);
+    margin: 0 0 14px;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+  }
+  .demo-term-frame .fallback p {
+    color: var(--dim);
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0 0 12px;
+  }
+  .demo-term-frame .fallback pre {
+    background: #000;
+    border: 1px dashed var(--line-2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    color: var(--green-2);
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0 0 12px;
+    overflow: auto;
+  }
+  .demo-term-frame .fallback .hint {
+    color: var(--dim);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Prompt block, the literal prompt sent to Claude */
+  .prompt-box {
+    background: #0a0a0a;
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--fg);
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(233,84,32,0.12) inset, 0 8px 24px rgba(0,0,0,0.4);
+    white-space: pre-wrap;
+  }
+  .prompt-box::before {
+    content: "PROMPT";
+    position: absolute;
+    top: -8px; left: 14px;
+    background: var(--amber);
+    color: #000;
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    padding: 1px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .prompt-box .p { color: var(--amber); }
+  .prompt-box .arg { color: var(--cyan-2); }
+  .prompt-box .file { color: var(--green-2); }
+  .prompt-box .em { color: var(--yellow-2); font-style: italic; }
+  .prompt-box .nl { display: block; height: 6px; }
+
+  .output-line {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .output-line b { color: var(--green-2); font-weight: 600; }
+  .output-line .arrow { color: var(--amber); }
+
+  /* Screenshot slot, drop screenshots/<name>.png to fill */
+  .screenshot-slot {
+    position: relative;
+    margin-top: 14px;
+    border: 1px dashed var(--line-2);
+    border-radius: 6px;
+    background: #0a0a0a;
+    overflow: hidden;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .screenshot-slot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .screenshot-slot .placeholder {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    padding: 18px;
+  }
+  .screenshot-slot .placeholder b { color: var(--amber); font-weight: 600; }
+  .screenshot-slot img.broken + .placeholder { display: flex; flex-direction: column; gap: 6px; }
+
+  /* Live iframe preview of generated HTML artifacts */
+  .artifact-frame {
+    position: relative;
+    margin-top: 14px;
+    border: 1px dashed var(--line-2);
+    border-radius: 6px;
+    background: #0a0a0a;
+    overflow: hidden;
+    flex: 1;
+    min-height: 70vh;
+    display: flex;
+  }
+  .artifact-frame iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 70vh;
+    border: 0;
+    background: white;
+  }
+  :fullscreen .artifact-frame,
+  :fullscreen .artifact-frame iframe { min-height: 78vh; }
+  .artifact-link {
+    align-self: flex-start;
+    margin-top: 12px;
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #000;
+    background: var(--amber);
+    text-decoration: none;
+    border-radius: 4px;
+    display: inline-block;
+    position: relative;
+    z-index: 5;
+    cursor: pointer;
+  }
+  .artifact-link:hover { filter: brightness(1.1); }
+  .slide-blurb { color: var(--fg); font-size: 14px; line-height: 1.55; max-width: 42ch; }
+
+  /* Workflow flow diagram */
+  .workflow-flow {
+    margin-top: 22px;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+  .wf-step {
+    flex: 1;
+    background: #0c0c0c;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+  }
+  .wf-icon {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    background: rgba(233,84,32,0.10);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .wf-icon.accent { background: var(--amber); color: #000; box-shadow: 0 0 10px rgba(233,84,32,0.45); }
+  .wf-icon.ok { background: rgba(110,196,90,0.15); border-color: var(--green-2); color: var(--green-2); }
+  .wf-label { color: var(--fg); font-size: 12px; font-weight: 600; }
+  .wf-sub { color: var(--dim); font-size: 10px; font-family: var(--mono); letter-spacing: 0.04em; }
+  .wf-arrow {
+    align-self: center;
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 18px;
+  }
+  .wf-loop {
+    flex: 3;
+    position: relative;
+    border: 1px dashed var(--amber);
+    border-radius: 8px;
+    padding: 22px 14px 38px;
+    background: radial-gradient(ellipse at center, rgba(233,84,32,0.06), transparent 70%);
+  }
+  .wf-loop-tag {
+    position: absolute;
+    top: -9px; left: 16px;
+    background: var(--panel);
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0 8px;
+  }
+  .wf-loop-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .wf-loop-row .wf-step { flex: 1; }
+  .wf-step.inloop {
+    border-color: rgba(233,84,32,0.45);
+    background: #0e0c0a;
+  }
+  .wf-loop-back {
+    position: absolute;
+    left: 14px; right: 14px;
+    bottom: 16px;
+    height: 22px;
+    pointer-events: none;
+  }
+  .wf-loop-caption {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: -2px;
+    text-align: center;
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  /* HTML-as-artifact mock, used in Claude Code slides */
+  .artifact {
+    background: #ffffff;
+    color: #1a1a1a;
+    border-radius: 6px;
+    padding: 12px 16px;
+    border: 1px solid var(--line-2);
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
+    overflow: hidden;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.4);
+  }
+  .artifact h4 { margin: 0 0 6px; font-size: 13px; }
+  .artifact .meta { color: #777; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+  .artifact .grid6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .artifact .approach { border: 1px solid #ddd; border-radius: 4px; padding: 6px 8px; font-size: 10px; }
+  .artifact .approach b { display: block; font-size: 11px; margin-bottom: 2px; }
+  .artifact .approach .pros { color: #1c7a2e; }
+  .artifact .approach .cons { color: #b32424; }
+  .artifact .slider-row { display: grid; grid-template-columns: 90px 1fr 40px; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dashed #eee; font-size: 11px; }
+  .artifact .slider-row .bar { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+  .artifact .slider-row .bar > i { display: block; height: 100%; background: var(--amber); }
+  .artifact .preview { margin-top: 8px; height: 70px; background: linear-gradient(135deg, #fde7df, #f7c5ad); border-radius: 4px; display: grid; place-items: center; color: #b34a1b; font-weight: 600; }
+  .artifact .copybtn { float: right; font-size: 10px; background: #111; color: #fff; padding: 2px 8px; border-radius: 3px; }
+  .artifact .diff-line { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 2px; white-space: pre; }
+  .artifact .diff-line.add { background: #e0f5e1; color: #144a1b; }
+  .artifact .diff-line.del { background: #fce0e0; color: #5a1414; }
+  .artifact .diff-line.ctx { color: #333; }
+  .artifact .annot { font-family: var(--mono); font-size: 10px; background: #fff3cd; border-left: 2px solid #e8a200; padding: 4px 8px; margin: 4px 0; color: #5a3e00; }
+  .artifact .sev-high { border-left-color: #cc1f1a; background: #fce0e0; color: #5a1414; }
+  .artifact .sev-low  { border-left-color: #1c7a2e; background: #e0f5e1; color: #144a1b; }
+
+  /* Ticket priority editor mock */
+  .editor-ui { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .editor-ui .ticket { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; font-size: 11px; cursor: grab; }
+  .editor-ui .ticket .handle { color: #aaa; }
+  .editor-ui .ticket .pill { font-size: 9px; padding: 1px 6px; border-radius: 99px; }
+  .editor-ui .ticket .p-hi { background: #fce0e0; color: #5a1414; }
+  .editor-ui .ticket .p-md { background: #fff3cd; color: #5a3e00; }
+  .editor-ui .ticket .p-lo { background: #e0f5e1; color: #144a1b; }
+
+  /* Notes overlay */
+  .notes-panel {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    max-height: 50%;
+    background: rgba(8, 8, 8, 0.97);
+    border-top: 1px solid var(--amber);
+    color: var(--fg);
+    padding: 18px 28px 22px;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 280ms cubic-bezier(.2,.7,.2,1);
+    z-index: 3;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .notes-panel.open { transform: translateY(0); }
+  .notes-panel .nlabel {
+    color: var(--amber);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .notes-panel p { margin: 0 0 8px; color: var(--fg); }
+  .notes-panel ul { margin: 0 0 8px 18px; padding: 0; color: var(--fg); }
+  .notes-panel ul li { margin: 0 0 4px; }
+  .notes-panel em { color: var(--dim); font-style: italic; }
+  .notes-panel b { color: var(--amber); font-weight: 600; }
+
+  .notes { display: none; }
+
+  @media (max-width: 900px) {
+    .slide { padding: 24px; }
+    .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr 1fr; }
+    .detail { grid-template-columns: 1fr; }
+    .flow { grid-template-columns: 1fr; }
+    .arrow { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="grain"></div>
+
+<div class="stage">
+  <div class="window" id="window">
+
+    <!-- Titlebar -->
+    <header class="titlebar">
+      <div class="tabs">
+        <div class="tab-item active">
+          <span class="tab-ico">U</span>
+          <span>aleks@WSL: ~/talks</span>
+          <span class="tab-close">✕</span>
+        </div>
+        <div class="new-tab">⌄</div>
+        <div class="new-tab">＋</div>
+      </div>
+      <div class="win-controls">
+        <div class="win-btn">─</div>
+        <div class="win-btn">▢</div>
+        <div class="win-btn close">✕</div>
+      </div>
+    </header>
+
+    <!-- Viewport -->
+    <main class="viewport" id="viewport">
+
+      <!-- ─── 1 · Cover ─── -->
+      <section class="slide title-slide active" data-title="cover">
+        <div class="reveal ascii" aria-hidden="true">
+ ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗
+ ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║
+    ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║
+    ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║
+    ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗
+    ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+        </div>
+
+        <div class="title-center">
+          <div class="reveal eyebrow">~/talks · 2026 · aleksander.dokken</div>
+          <h1 class="display reveal">custom terminal<br/>&amp; <em>Claude Code</em><span class="cursor"></span></h1>
+          <div class="reveal" style="margin-top:24px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="tag">zellij</span>
+            <span class="tag">zsh</span>
+            <span class="tag">starship</span>
+            <span class="tag">helix</span>
+            <span class="tag">ripgrep</span>
+            <span class="tag">claude code</span>
+            <span class="tag">mcp · skills · hooks</span>
+          </div>
+        </div>
+
+        <footer class="title-foot reveal">
+          <div>
+            <b>Aleksander Dokken</b> · Systek
+          </div>
+        </footer>
+
+        <div class="notes">
+          <p><b>Velkommen.</b> Jeg er Aleksander Dokken, jobber i Systek, jobber for tiden hos Norsk Rikstoto. Denne talen handler om <em>min</em> arbeidsflyt: terminal-stacken og hvordan jeg bruker Claude Code i hverdagen.</p>
+          <p>Lovnaden i dag: du går ut herfra med 2–3 ting du kan prøve på mandag.</p>
+          <ul>
+            <li>Først raskt om terminal-stacken, under 5 min</li>
+            <li>Så hoveddelen: Claude Code, og særlig hvordan jeg får den til å produsere <b>interaktiv HTML</b> som output. Dette ble et "aha" for meg nylig.</li>
+            <li>Avslutter med slash commands, skills, hooks og MCP, alt som limer det sammen.</li>
+          </ul>
+          <p><em>Tips: Trykk N for å skjule notatene under presentasjonen.</em></p>
+        </div>
+      </section>
+
+      <!-- ─── 2 · Live terminal demo ─── -->
+      <section class="slide demo-slide" data-title="live demo · terminal">
+        <div class="reveal eyebrow">01 · the stack</div>
+        <h2 class="section reveal"><span class="num">01.</span>The stack: live, in this slide.</h2>
+
+        <div class="reveal demo-chip-row">
+          <span class="demo-chip"><b>zellij</b> · mux</span>
+          <span class="demo-chip"><b>zsh</b> · shell</span>
+          <span class="demo-chip"><b>starship</b> · prompt</span>
+          <span class="demo-chip"><b>zoxide</b> · z</span>
+          <span class="demo-chip"><b>yazi</b> · files</span>
+          <span class="demo-chip"><b>helix</b> · editor</span>
+          <span class="demo-chip"><b>rg · fd · fzf</b> · search</span>
+          <span class="demo-chip accent"><b>claude code</b> · agent</span>
+        </div>
+
+        <div class="reveal demo-term-frame">
+          <div class="frame-bar">
+            <span class="dots">
+              <span class="dot r"></span>
+              <span class="dot y"></span>
+              <span class="dot g"></span>
+            </span>
+            <span class="label">aleks@WSL: ~/talks/demo-sandbox</span>
+            <span class="status"><span class="dot"></span><span id="ttyd-status">ttyd · localhost:7682</span></span>
+          </div>
+          <div class="term-host">
+            <div class="fallback">
+              <div class="box">
+                <h3>terminal not connected</h3>
+                <p>This slide embeds your real zsh via <b>ttyd</b>. Start it once before the talk:</p>
+                <pre>sudo apt install ttyd       <span style="color:var(--dim)"># once</span>
+mkdir -p ~/talks/demo-sandbox
+cd ~/talks/demo-sandbox
+ttyd -W -p 7682 zsh</pre>
+                <p>Then reload this slide. Everything (zellij, zoxide, claude, helix, rg) runs in your actual shell. The iframe is just a window into your real terminal.</p>
+                <p class="hint">if it stays blank → ttyd isn't running on 7681</p>
+              </div>
+            </div>
+            <iframe id="ttyd-iframe" title="ttyd terminal" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>This slide hosts your real zsh inside the browser via ttyd.</b> Everything you'd see in Windows Terminal is here, zellij, zoxide, claude, the works.</p>
+          <p><b>One-time setup:</b></p>
+          <pre style="background:#000;color:#8ae234;padding:8px;border-radius:4px;font-size:11px;">sudo apt install ttyd
+mkdir -p ~/talks/demo-sandbox
+cd ~/talks/demo-sandbox
+# put a small dotnet sample repo here if you want a target for the demo
+git clone &lt;something-small&gt; .</pre>
+          <p><b>Before each talk:</b></p>
+          <pre style="background:#000;color:#8ae234;padding:8px;border-radius:4px;font-size:11px;">cd ~/talks/demo-sandbox
+ttyd -W -p 7681 zsh
+# leave running in a background terminal</pre>
+          <p><b>Flags explained:</b> <code>-W</code> = writable (lets you type, not just view). <code>-p 7681</code> = port. By default ttyd is read-only, without -W the audience would see nothing happen when you type.</p>
+          <p><b>Demo script (under 4 min):</b></p>
+          <ol>
+            <li><b>zellij</b>: split a pane (<code>Ctrl+P → R</code>), switch tabs. Point at the keybind hints in the status bar.</li>
+            <li><b>zsh + starship</b>: partial command, show ghost suggestion. Note the prompt segments.</li>
+            <li><b>zoxide</b>: <code>z rik</code>, then <code>zi</code>.</li>
+            <li><b>yazi</b>: <code>y</code>, browse, preview, quit.</li>
+            <li><b>rg + fzf</b>: <code>rg "ICustomerRepo" | fzf</code>.</li>
+            <li><b>helix</b>: open a file, show selection-first edit.</li>
+            <li><b>claude</b>: <code>claude</code>, ask "which .csproj files reference Serilog?". Let it run rg internally. Stop there, the next slides cover Claude properly.</li>
+          </ol>
+          <p><b>Sandbox-dir tip:</b> drop a small real .NET repo into <code>~/talks/demo-sandbox</code> so the demo has something believable to grep through. Avoid your actual work tree, you don't want stray git state showing on the projector.</p>
+          <p><b>If the iframe is blank:</b> ttyd isn't running. The slide shows setup instructions. Worst case, alt-tab to Windows Terminal, the deck still works.</p>
+        </div>
+      </section>
+
+      <!-- ─── 3 · HTML > Markdown ─── -->
+      <section class="slide" data-title="html > markdown">
+        <div class="reveal eyebrow">02 · output-format</div>
+        <h2 class="section reveal"><span class="num">02.</span>Ask Claude for <span style="color:var(--amber)">HTML</span>, not markdown.</h2>
+
+        <div class="grid cols-2" style="margin-top:18px">
+          <div class="reveal" style="display:flex; flex-direction:column; gap:14px; min-height:0;">
+            <p class="slide-blurb">
+              Default fra LLMs er markdown. HTML er en superkraft når Claude skriver fila rett til disk.
+            </p>
+            <div class="prompt-box">
+<span class="p">›</span> <span class="em">Make me an HTML cheatsheet of CSharpCache's public API.</span>
+<span class="nl"></span>Scan the repo. Produce <span class="file">./api-cheatsheet.html</span>, one
+self-contained file. Include: a table of every public
+type/method, signature, one-line summary, link to
+file:line. Add a tiny "common usage" snippet at the top.
+            </div>
+            <a class="artifact-link" onclick="event.stopPropagation()" href="demo-sandbox/api-cheatsheet.html" target="_blank">åpne api-cheatsheet.html ↗</a>
+          </div>
+
+          <div class="reveal" style="display:flex; flex-direction:column; min-height:0;">
+            <div class="artifact-frame">
+              <iframe src="demo-sandbox/api-cheatsheet.html" title="api-cheatsheet"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Most important slide in the deck.</b></p>
+          <p>Anthropic posted a blog last month titled "The Unreasonable Effectiveness of HTML". The pitch is annoyingly simple:</p>
+          <p><em>When you ask Claude for a plan, a comparison, a report, ask for HTML, not markdown. A self-contained .html you open in the browser.</em></p>
+          <p>What you get:</p>
+          <ul>
+            <li>Tables with color and styling</li>
+            <li>SVG diagrams where needed</li>
+            <li>Buttons and sliders, interactive tuning</li>
+            <li>Copy buttons that dump results back as prompt</li>
+          </ul>
+          <p>What it actually gives you: <b>you read it</b>. Markdown specs go unread. A well-formatted HTML page with the right density engages.</p>
+          <p><b>Demo opener:</b> live-run the API cheatsheet prompt against CSharpCache in the ttyd terminal. Once the file's open, the audience gets <em>why</em> for free, five seconds of comparing a markdown table vs. this is enough.</p>
+          <p>The next 5 slides each show one specific pattern. Each has a prompt you can copy verbatim.</p>
+        </div>
+      </section>
+
+      <!-- ─── 4 · HTML for plan / spec ─── -->
+      <section class="slide" data-title="plan · 6 approaches">
+        <div class="reveal eyebrow">03 · plan &amp; spec</div>
+        <h2 class="section reveal"><span class="num">03.</span>Six different solutions, side by side.</h2>
+
+        <div class="grid cols-2">
+          <div class="reveal" style="display:flex; flex-direction:column; gap:14px; min-height:0;">
+            <p class="slide-blurb">
+              6 tilnærminger side-by-side. Trade-offs synlige med ett blikk, ikke begravd i én lang markdown.
+            </p>
+            <div class="prompt-box">
+<span class="p">›</span> <span class="em">Look at the cache eviction logic in this repo.</span>
+<span class="nl"></span>Generate 6 distinctly different approaches for adding
+a sliding-window TTL on top of what's there.
+<span class="nl"></span>Output: <span class="file">./plan-eviction.html</span>, single file, 3×2 grid.
+Each cell: name, one-line approach, pros, cons,
+complexity score 1–5, files it would touch.
+Mark your recommendation in <span class="arg">amber</span>.
+            </div>
+            <a class="artifact-link" onclick="event.stopPropagation()" href="demo-sandbox/plan-eviction.html" target="_blank">åpne plan-eviction.html ↗</a>
+          </div>
+
+          <div class="reveal" style="display:flex; flex-direction:column; min-height:0;">
+            <div class="artifact-frame">
+              <iframe src="demo-sandbox/plan-eviction.html" title="plan-eviction"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Use case 1: Planning with HTML.</b></p>
+          <p>Classic markdown plan: bullets under headers, linear read. You can't see options 3 and 5 at the same time.</p>
+          <p>HTML version: a 3×2 grid. One glance tells you "B and D are real candidates". No scrolling.</p>
+          <p><b>Generic prompt template:</b></p>
+          <p><em>"Generate N distinctly different approaches to [problem]. Output as ./plan.html with a 3×2 grid. Each cell: name, approach, pros, cons, complexity score, files touched. Mark your recommendation."</em></p>
+          <p>Open the HTML next to the terminal. Read, give feedback, ask for "expand approach B into its own plan-B.html". You end up with a small <b>web of interlinked HTML specs</b>: not one linear doc.</p>
+          <p><b>Demo:</b> paste the prompt against CSharpCache. Should produce something in ~20 seconds.</p>
+        </div>
+      </section>
+
+      <!-- ─── 5 · HTML for code review ─── -->
+      <section class="slide" data-title="review · annotated diff">
+        <div class="reveal eyebrow">04 · code review</div>
+        <h2 class="section reveal"><span class="num">04.</span>Code review as annotated HTML diff.</h2>
+
+        <div class="grid cols-2">
+          <div class="reveal" style="display:flex; flex-direction:column; gap:14px; min-height:0;">
+            <p class="slide-blurb">
+              Faktisk diff inline med margin-notater og severity-farger. Send HTML-en til en reviewer.
+            </p>
+            <div class="prompt-box">
+<span class="p">›</span> <span class="em">Run git log --oneline -15 on this repo.</span>
+<span class="nl"></span>Pick one non-trivial commit (touches &gt;1 file, not a
+rename or version bump). Produce <span class="file">./review.html</span> that:
+<span class="nl"></span><span class="arg">1)</span> renders the actual git diff inline
+<span class="arg">2)</span> color-codes findings by severity (high/med/low/nice)
+<span class="arg">3)</span> margin annotations with rationale, not just what
+<span class="arg">4)</span> file:line refs for anything you flag
+<span class="arg">5)</span> a "questions for the author" section at the end
+            </div>
+            <a class="artifact-link" onclick="event.stopPropagation()" href="review.html" target="_blank">åpne review.html ↗</a>
+          </div>
+
+          <div class="reveal" style="display:flex; flex-direction:column; min-height:0;">
+            <div class="artifact-frame">
+              <iframe src="review.html" title="review"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Use case 2: Review as artifact.</b></p>
+          <p>Normal agent review: a markdown wall. You lose focus by line 5.</p>
+          <p>HTML review: <em>the diff itself is rendered</em>, with severity-colored annotations in the margin. Scroll, see context, skip the low-priority stuff.</p>
+          <p><b>Why it matters:</b> I send this HTML to a colleague who doesn't know the code. They get the full picture (diff, rationale, severity) in one document they actually read.</p>
+          <p><b>Generic prompt template:</b></p>
+          <p><em>"Make an HTML artifact for this PR. Render the actual diff inline with margin annotations. Color-code by severity. Include rationale, not just 'this is wrong'. Write to ./review.html."</em></p>
+          <p><b>Advanced:</b> dispatch parallel subagents, one for security, one for correctness, one for test coverage. Each contributes a section. Merge into one HTML.</p>
+          <p><b>Demo:</b> point Claude at CSharpCache, let it pick a recent commit. Show the resulting HTML.</p>
+        </div>
+      </section>
+
+      <!-- ─── 6 · HTML playground ─── -->
+      <section class="slide" data-title="playground · sliders">
+        <div class="reveal eyebrow">05 · interactive tuning</div>
+        <h2 class="section reveal"><span class="num">05.</span>Interactive playgrounds in one HTML.</h2>
+
+        <div class="grid cols-2">
+          <div class="reveal" style="display:flex; flex-direction:column; gap:14px; min-height:0;">
+            <p class="slide-blurb">
+              Slidere for hver parameter, live simulering, copy-knapp som dumper config som kode.
+            </p>
+            <div class="prompt-box">
+<span class="p">›</span> <span class="em">CSharpCache is a caching library. Build me a tuning
+playground I can use to pick reasonable defaults.</span>
+<span class="nl"></span>Output: <span class="file">./cache-playground.html</span>, single file.
+<span class="nl"></span>Controls: <span class="arg">maxEntries</span>, <span class="arg">ttlSeconds</span>, <span class="arg">evictionPolicy</span>.
+<span class="nl"></span>Simulate Zipfian access. Plot hit-rate, evictions/sec
+live. <span class="arg">"Copy as C# initializer"</span> button at bottom.
+            </div>
+            <a class="artifact-link" onclick="event.stopPropagation()" href="demo-sandbox/cache-playground.html" target="_blank">åpne cache-playground.html ↗</a>
+          </div>
+
+          <div class="reveal" style="display:flex; flex-direction:column; min-height:0;">
+            <div class="artifact-frame">
+              <iframe src="demo-sandbox/cache-playground.html" title="cache-playground"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Use case 3: Interactive tuning.</b></p>
+          <p>Probably my favorite pattern. When I need to land on the "right" number for something (TTL, timeout, retry backoff, threshold). I ask Claude for an interactive HTML.</p>
+          <p>Old way: edit value, reload, observe, repeat. Slow.</p>
+          <p>New way: <em>"Make an HTML with sliders for these params. Animate/simulate. Copy button that dumps the final config."</em></p>
+          <p>5 minutes later I have a mini-app. Drag sliders 30 seconds, copy the values, paste into the real code. Done.</p>
+          <p><b>Other patterns this works for:</b></p>
+          <ul>
+            <li>Retry strategy: sliders for backoff/jitter/max-retries → graph of total wait time distribution</li>
+            <li>Rate-limit tuning: bucket-size + refill-rate → throughput graph</li>
+            <li>Color palette: HSL sliders → preview of components live</li>
+          </ul>
+          <p><b>Demo:</b> generate the cache-playground.html live in CSharpCache. Drag the sliders, show the hit-rate respond. Copy the C# config.</p>
+        </div>
+      </section>
+
+      <!-- ─── 7 · Reports & research ─── -->
+      <section class="slide" data-title="reports">
+        <div class="reveal eyebrow">06 · reports</div>
+        <h2 class="section reveal"><span class="num">06.</span>Reports people actually read.</h2>
+
+        <div class="grid cols-2">
+          <div class="reveal" style="display:flex; flex-direction:column; gap:14px; min-height:0;">
+            <p class="slide-blurb">
+              SVG-diagram, annoterte snutter, gotchas-seksjon. Kollegaer leser det faktisk.
+            </p>
+            <div class="prompt-box">
+<span class="p">›</span> <span class="em">Write an HTML onboarding explainer for someone joining
+the CSharpCache project tomorrow.</span>
+<span class="nl"></span>Inspect the actual code. Output: <span class="file">./onboarding.html</span>
+<span class="nl"></span>Sections: elevator pitch, SVG architecture diagram,
+"read these 3 files first" with file:line refs,
+annotated snippet of the key method, gotchas,
+"how to run tests / extend" cheatsheet.
+            </div>
+            <a class="artifact-link" onclick="event.stopPropagation()" href="demo-sandbox/onboarding.html" target="_blank">åpne onboarding.html ↗</a>
+          </div>
+
+          <div class="reveal" style="display:flex; flex-direction:column; min-height:0;">
+            <div class="artifact-frame">
+              <iframe src="demo-sandbox/onboarding.html" title="onboarding"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Use case 5: Reports that get read.</b></p>
+          <p>When I ask Claude to dig through a new area ("how does billing work?", "explain our auth flow"), it's tempting to ask for a markdown spec.</p>
+          <p>In my experience: <em>they don't get read</em>. Not by me, definitely not by colleagues. Too long, too grey.</p>
+          <p>HTML report with:</p>
+          <ul>
+            <li>SVG diagram at top (Claude can draw simple SVG)</li>
+            <li>Code snippets with syntax highlighting</li>
+            <li>"Gotchas" / "do not do this" section, always the most valuable bit</li>
+            <li>Links to actual files</li>
+          </ul>
+          <p>...gets read. Colleagues scroll it in 3 minutes and learn something.</p>
+          <p><b>Generic prompt template:</b></p>
+          <p><em>"Write an HTML explainer for [system X]. Include a simple SVG architecture diagram, 2–3 code snippets showing the main flow, a 'gotchas' section with things that have bitten us before. Link to relevant files."</em></p>
+          <p><b>Demo:</b> the onboarding HTML for CSharpCache should be tangible, show it'd actually onboard someone in 5 minutes vs. reading a markdown README in 30.</p>
+        </div>
+      </section>
+
+      <!-- ─── 7 · MCP-workflow i praksis ─── -->
+      <section class="slide" data-title="mcp · workflow">
+        <div class="reveal eyebrow">07 · workflow</div>
+        <h2 class="section reveal"><span class="num">07.</span>MCP i praksis: <span style="color:var(--amber)">Linear → Figma → mobil → match</span>.</h2>
+
+        <div class="reveal workflow-flow">
+          <div class="wf-step">
+            <div class="wf-icon">L</div>
+            <div class="wf-label">Linear</div>
+            <div class="wf-sub">ticket + AC</div>
+          </div>
+          <div class="wf-arrow">→</div>
+
+          <div class="wf-loop">
+            <div class="wf-loop-tag">iterativ loop · til pixel-match</div>
+            <div class="wf-loop-row">
+              <div class="wf-step inloop">
+                <div class="wf-icon">F</div>
+                <div class="wf-label">Figma MCP</div>
+                <div class="wf-sub">designet</div>
+              </div>
+              <div class="wf-arrow">→</div>
+              <div class="wf-step inloop">
+                <div class="wf-icon accent">C</div>
+                <div class="wf-label">Claude koder</div>
+                <div class="wf-sub">RN-komponent</div>
+              </div>
+              <div class="wf-arrow">→</div>
+              <div class="wf-step inloop">
+                <div class="wf-icon">▣</div>
+                <div class="wf-label">ADB / Playwright</div>
+                <div class="wf-sub">screenshot</div>
+              </div>
+            </div>
+            <svg class="wf-loop-back" viewBox="0 0 600 40" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <marker id="wf-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="#e95420"/>
+                </marker>
+              </defs>
+              <path d="M 560,4 C 560,34 540,34 300,34 C 60,34 40,34 40,4"
+                    stroke="#e95420" stroke-width="1.4" fill="none"
+                    stroke-dasharray="4 3" marker-end="url(#wf-arrowhead)"/>
+            </svg>
+            <div class="wf-loop-caption">diff Figma ↔ screenshot · juster · ny iterasjon</div>
+          </div>
+
+          <div class="wf-arrow">→</div>
+          <div class="wf-step">
+            <div class="wf-icon ok">✓</div>
+            <div class="wf-label">Match</div>
+            <div class="wf-sub">commit / PR</div>
+          </div>
+        </div>
+
+        <div class="grid cols-4 reveal" style="margin-top:28px">
+          <div class="card"><div class="corner"></div>
+            <div class="role">linear MCP</div><h3>tickets in-context</h3>
+            <p style="color:var(--fg); font-size:12px; line-height:1.5">
+              Ticket, parent, kommentarer, AC. Ingen alt-tab.
+            </p>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--cyan-2);">
+              get_issue · list_comments
+            </div>
+          </div>
+          <div class="card"><div class="corner"></div>
+            <div class="role">figma MCP</div><h3>designet som kilde</h3>
+            <p style="color:var(--fg); font-size:12px; line-height:1.5">
+              Layout, tokens, varianter. Code Connect mapper til kode.
+            </p>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--cyan-2);">
+              use_figma · code-connect
+            </div>
+          </div>
+          <div class="card"><div class="corner"></div>
+            <div class="role">adb + playwright</div><h3>screenshot-loopen</h3>
+            <p style="color:var(--fg); font-size:12px; line-height:1.5">
+              Bygg → screenshot → diff mot Figma → fix. Til match.
+            </p>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--cyan-2);">
+              adb screencap · browser_screenshot
+            </div>
+          </div>
+          <div class="card"><div class="corner"></div>
+            <div class="role">skills · in-repo</div><h3>kvalitet ved gate</h3>
+            <p style="color:var(--fg); font-size:12px; line-height:1.5">
+              <code class="shell">.claude/skills/</code> auto-laster compliance, standards, security.
+            </p>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--magenta-2);">
+              rikstoto-compliance · security
+            </div>
+          </div>
+        </div>
+
+        <div class="notes">
+          <p><b>Min faktiske workflow siste måneden, Stalltips RN-appen.</b></p>
+          <p><b>1. Linear MCP.</b> Jeg starter med en ticket-ID. Claude henter selv: issue body, parent-issue, alle kommentarer, status, labels. Den vet hva som er acceptance-criteria før den skriver en linje kode. Stopper "hva mente du egentlig?"-ping-ponget.</p>
+          <p><b>2. Figma MCP.</b> Dette er det største skiftet. Tidligere måtte jeg manuelt forklare designet. Nå peker jeg på en Figma-frame, og Claude leser auto-layout, padding, farger, tokens, varianter direkte. Combo med vår Code Connect-oppsett betyr at Claude vet at <em>denne</em> Figma-knappen mapper til <em>vår</em> &lt;Button variant="primary"&gt;.</p>
+          <p><b>3. ADB + Playwright.</b> Magien. Claude:</p>
+          <ul>
+            <li>Bygger appen lokalt</li>
+            <li>Starter Android-emulator</li>
+            <li>Via ADB: <code>adb shell screencap</code> → henter PNG av skjermen</li>
+            <li>Sammenligner mot Figma-frame (visuelt resonement)</li>
+            <li>"Padding er 4px for liten, font-weight er feil" → fikser → tar nytt screenshot</li>
+            <li>Looper til pixel-match</li>
+          </ul>
+          <p>For web-deler bruker den Playwright MCP samme måte. Resultat: jeg får en PR der screenshot ligger ved siden av Figma, og de er identiske.</p>
+          <p><b>4. Skills i repo.</b> <code>.claude/skills/</code> versjonéres med koden. Vi har:</p>
+          <ul>
+            <li><b>rikstoto-compliance</b>: regulatoriske krav fra Lotteritilsynet. Loader auto når Claude rører limit/pause/exclusion-kode.</li>
+            <li><b>code-standards</b>: Rikstoto-conventions, naming, struktur.</li>
+            <li><b>security-review</b>: sjekkliste før commit av noe som rører auth, tokens, kundedata.</li>
+          </ul>
+          <p>Skills laster <em>bare ved behov</em>. Beskrivelsen leses alltid, fullt innhold når relevant. Sparer tokens og holder Claude focused.</p>
+          <p><b>Konklusjon for talen</b>: dette er ikke fremtiden. Dette er hverdagen min siste måned. Hver del er bare en MCP-server som man installerer.</p>
+        </div>
+      </section>
+
+      <!-- ─── End ─── -->
+      <section class="slide title-slide" data-title="spørsmål">
+        <div class="reveal eyebrow">08 · /exit</div>
+
+        <div class="title-center">
+          <h1 class="endbig reveal"><em>spørsmål?</em><span class="cursor"></span></h1>
+        </div>
+
+        <footer class="title-foot reveal">
+          <div>
+            <b>Aleksander Dokken</b> · Systek
+          </div>
+          <div style="text-align:right">
+            process exited <span style="color:var(--green-2)">0</span>
+          </div>
+        </footer>
+
+        <div class="notes">
+          <p><b>Takk for oppmerksomheten.</b></p>
+          <p>Tre ting å ta med:</p>
+          <ol style="color: var(--fg); padding-left: 22px;">
+            <li><b>Terminal + Claude</b> handler om at hvert tastetrykk teller, og at Claude bor i samme rom.</li>
+            <li><b>Be om HTML</b>, ikke markdown. Enkleste endringen, størst effekt.</li>
+            <li><b>Lag dine egne</b> slash commands, skills og hooks. De er bare filer. De versjonéres. De compound.</li>
+          </ol>
+          <p>Spørsmål? aleksander.dokken@systek.no, eller stikk innom etterpå.</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Notes panel -->
+    <div id="notes-panel" class="notes-panel" aria-hidden="true">
+      <div class="nlabel">
+        <span>presenter notes · <span id="notes-slide-title">cover</span></span>
+        <span><span class="kbd">N</span> for å lukke</span>
+      </div>
+      <div id="notes-body"></div>
+    </div>
+
+    <!-- Statusbar -->
+    <footer class="statusbar">
+      <div class="seg"><span class="k">NORMAL</span></div>
+      <div class="seg"><span>aleks@WSL</span></div>
+      <div class="seg"><span>~/talks/min-arbeidsflyt.html</span></div>
+      <div class="seg right"><span id="slide-title">cover</span></div>
+      <div class="seg progress" id="progress"></div>
+      <div class="seg"><span id="counter">01 / 11</span></div>
+      <div class="seg"><span>●</span><span class="blink">REC</span></div>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+  const slides   = Array.from(document.querySelectorAll('.slide'));
+  const counter  = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  const title    = document.getElementById('slide-title');
+  const notesPanel = document.getElementById('notes-panel');
+  const notesBody  = document.getElementById('notes-body');
+  const notesTitle = document.getElementById('notes-slide-title');
+  let   i = 0;
+  let   notesOpen = false;
+
+  slides.forEach(() => {
+    const s = document.createElement('span');
+    s.className = 'seg-bar';
+    progress.appendChild(s);
+  });
+  const bars = Array.from(progress.querySelectorAll('.seg-bar'));
+
+  const TTYD_URL = 'http://localhost:7682';
+  let ttydMounted = false;
+
+  async function ttydReachable() {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1200);
+      await fetch(TTYD_URL, { mode: 'no-cors', cache: 'no-cache', signal: ctrl.signal });
+      clearTimeout(timer);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function ensureTtyd() {
+    if (ttydMounted) return;
+    const iframe = document.getElementById('ttyd-iframe');
+    const status = document.getElementById('ttyd-status');
+    if (!iframe) return;
+    const ok = await ttydReachable();
+    if (ok) {
+      iframe.src = TTYD_URL;
+      ttydMounted = true;
+      if (status) status.textContent = 'ttyd · connected';
+    } else if (status) {
+      status.textContent = 'ttyd · offline';
+      status.style.color = 'var(--red-2)';
+      const dotEl = status.querySelector('.dot');
+      if (dotEl) { dotEl.style.background = 'var(--red-2)'; dotEl.style.boxShadow = '0 0 8px var(--red-2)'; }
+    }
+  }
+
+  function render() {
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    bars.forEach((b, idx) => b.classList.toggle('on', idx <= i));
+    counter.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+    title.textContent = slides[i].dataset.title || '';
+
+    const noteEl = slides[i].querySelector('.notes');
+    notesBody.innerHTML = noteEl ? noteEl.innerHTML : '<p><em>Ingen notater for denne sliden.</em></p>';
+    notesTitle.textContent = slides[i].dataset.title || '';
+
+    if (slides[i].classList.contains('demo-slide')) ensureTtyd();
+  }
+  function go(d) {
+    i = Math.max(0, Math.min(slides.length - 1, i + d));
+    render();
+  }
+  function toggleNotes() {
+    notesOpen = !notesOpen;
+    notesPanel.classList.toggle('open', notesOpen);
+    notesPanel.setAttribute('aria-hidden', String(!notesOpen));
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Home') { i = 0; render(); }
+    else if (e.key === 'End')  { i = slides.length - 1; render(); }
+    else if (e.key.toLowerCase() === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+    else if (e.key.toLowerCase() === 'n') { toggleNotes(); }
+    else if (e.key.toLowerCase() === 'g') {
+      const n = parseInt(prompt('hopp til slide (1–' + slides.length + ')'), 10);
+      if (!isNaN(n)) { i = Math.max(0, Math.min(slides.length - 1, n - 1)); render(); }
+    }
+  });
+  document.querySelectorAll('.artifact-link').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (document.fullscreenElement) {
+        e.preventDefault();
+        document.exitFullscreen().then(() => window.open(link.href, '_blank'));
+      }
+    });
+  });
+  document.getElementById('viewport').addEventListener('click', (e) => {
+    if (notesPanel.contains(e.target)) return;
+    if (e.target.closest('a, button, input, select, textarea, iframe, .artifact-frame, .prompt-box, .term, .demo-term-frame')) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width * 0.3) go(-1);
+    else if (x > rect.width * 0.7) go(1);
+  });
+  render();
+</script>
+</body>
+</html>

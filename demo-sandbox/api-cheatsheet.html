@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSharpCache — Public API Cheatsheet</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --orange: #d29922;
+    --red: #f85149;
+    --yellow: #e3b341;
+    --code-bg: #1f2428;
+    font-size: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+    padding: 32px 24px 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+  header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
+  header p { color: var(--muted); margin-top: 4px; }
+  header .badge {
+    display: inline-block; margin-top: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; color: var(--muted);
+  }
+
+  /* ── Usage snippet ─────────────────────────────────────── */
+  .usage {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+  }
+  .usage h2 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; }
+  pre {
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  /* syntax highlight classes */
+  .kw  { color: #ff7b72; }   /* keyword  */
+  .ty  { color: #79c0ff; }   /* type     */
+  .cm  { color: #8b949e; font-style: italic; } /* comment */
+  .str { color: #a5d6ff; }   /* string   */
+  .num { color: #79c0ff; }   /* number   */
+  .met { color: #d2a8ff; }   /* method   */
+  .prop{ color: #ffa657; }   /* property */
+
+  /* ── Section headers ────────────────────────────────────── */
+  .section { margin-bottom: 40px; }
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .section-header h2 { font-size: 1.05rem; font-weight: 600; }
+  .tag {
+    font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px;
+  }
+  .tag-interface { background: #1a3a5c; color: var(--accent); border: 1px solid #2b5278; }
+  .tag-class     { background: #1a3a2a; color: var(--green);  border: 1px solid #2b5e3a; }
+  .tag-record    { background: #2d1b69; color: var(--purple); border: 1px solid #4a2f9e; }
+  .tag-struct    { background: #3a2200; color: var(--orange); border: 1px solid #6a4000; }
+
+  .namespace-label {
+    font-size: 0.72rem; color: var(--muted);
+    font-family: "JetBrains Mono", Consolas, monospace;
+    margin-bottom: 8px;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.82rem;
+  }
+  thead tr { background: var(--surface2); }
+  th {
+    text-align: left; padding: 10px 14px;
+    color: var(--muted); font-weight: 600; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.03); }
+  code {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-size: 0.8rem;
+  }
+  .sig { color: var(--text); }
+  .kind {
+    display: inline-block; font-size: 0.65rem; font-weight: 600;
+    text-transform: uppercase; padding: 1px 5px; border-radius: 3px;
+    white-space: nowrap;
+  }
+  .kind-ctor   { background: #1a2a3a; color: #58a6ff; }
+  .kind-method { background: #1a2a3a; color: #d2a8ff; }
+  .kind-prop   { background: #1a2a3a; color: #ffa657; }
+  .linksym {
+    color: var(--muted); text-decoration: none; font-size: 0.72rem;
+    font-family: monospace; white-space: nowrap;
+  }
+  .linksym:hover { color: var(--accent); text-decoration: underline; }
+  .summary { color: var(--muted); }
+  .throws { color: var(--red); font-size: 0.75rem; }
+  .note { color: var(--yellow); font-size: 0.75rem; }
+
+  /* ── Footer ─────────────────────────────────────────────── */
+  footer {
+    margin-top: 48px; padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CSharpCache — Public API</h1>
+  <p>In-memory TTL cache built from scratch in C# / .NET 10</p>
+  <span class="badge">Cache.Core · Cache.Adapters.Memory</span>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     COMMON USAGE SNIPPET
+     ══════════════════════════════════════════════════════════ -->
+<div class="usage">
+  <h2>⚡ Common Usage</h2>
+<pre><span class="kw">using</span> Cache.Adapters.Memory;
+<span class="kw">using</span> Cache.Core;
+
+<span class="cm">// 1. Create — 30 s default TTL, sweep expired entries every 10 s</span>
+<span class="kw">using var</span> cache = <span class="kw">new</span> <span class="ty">TtlCache</span>&lt;<span class="ty">string</span>&gt;(
+    defaultTtl:    <span class="ty">TimeSpan</span>.<span class="met">FromSeconds</span>(<span class="num">30</span>),
+    sweepInterval: <span class="ty">TimeSpan</span>.<span class="met">FromSeconds</span>(<span class="num">10</span>));
+
+<span class="cm">// 2. Write — uses default TTL</span>
+cache.<span class="met">Set</span>(<span class="str">"user:42"</span>, <span class="str">"Alice"</span>);
+
+<span class="cm">// 3. Write — custom absolute TTL</span>
+cache.<span class="met">Set</span>(<span class="str">"session:abc"</span>, <span class="str">"token"</span>,
+    <span class="kw">new</span> <span class="ty">CacheEntryOptions</span>(AbsoluteTtl: <span class="ty">TimeSpan</span>.<span class="met">FromMinutes</span>(<span class="num">5</span>)));
+
+<span class="cm">// 4. Write — sliding TTL capped by an absolute ceiling</span>
+cache.<span class="met">Set</span>(<span class="str">"feed:home"</span>, <span class="str">"data"</span>,
+    <span class="kw">new</span> <span class="ty">CacheEntryOptions</span>(
+        AbsoluteTtl: <span class="ty">TimeSpan</span>.<span class="met">FromMinutes</span>(<span class="num">10</span>),
+        SlidingTtl:  <span class="ty">TimeSpan</span>.<span class="met">FromMinutes</span>(<span class="num">2</span>)));
+
+<span class="cm">// 5. Read</span>
+<span class="kw">if</span> (cache.<span class="met">TryGet</span>(<span class="str">"user:42"</span>, <span class="kw">out var</span> user))
+    <span class="ty">Console</span>.<span class="met">WriteLine</span>(user);   <span class="cm">// "Alice"</span>
+
+<span class="cm">// 6. Delete</span>
+cache.<span class="met">Remove</span>(<span class="str">"user:42"</span>);
+
+<span class="cm">// 7. Metrics</span>
+<span class="ty">CacheMetricsSnapshot</span> snap = cache.<span class="met">GetMetricsSnapshot</span>();
+<span class="ty">Console</span>.<span class="met">WriteLine</span>(<span class="str">$"Hit rate: {snap.<span class="prop">HitRate</span>:P1}  Entries: {snap.<span class="prop">Count</span>}"</span>);
+
+<span class="cm">// 8. Manual sweep (normally automatic)</span>
+<span class="kw">int</span> evicted = cache.<span class="met">SweepExpiredEntries</span>();
+
+<span class="cm">// Dispose stops the background sweep timer</span></pre>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     ICache<TKey, TValue>
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="tag tag-interface">interface</span>
+    <h2>ICache&lt;TKey, TValue&gt;</h2>
+  </div>
+  <div class="namespace-label">Cache.Core &nbsp;·&nbsp; where TKey : notnull</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>Signature</th>
+        <th>Summary</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">void Set(TKey key, TValue value,<br>CacheEntryOptions? options = null)</code></td>
+        <td class="summary">Store or overwrite an entry. Options override the default TTL.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/ICache.cs#L5">ICache.cs:5</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">bool TryGet(TKey key, out TValue value)</code></td>
+        <td class="summary">Return <code>true</code> + value on hit. Expired entries are treated as misses → returns <code>false</code>.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/ICache.cs#L8">ICache.cs:8</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">bool Remove(TKey key)</code></td>
+        <td class="summary">Explicit eviction. Returns <code>true</code> if the key was present.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/ICache.cs#L10">ICache.cs:10</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">int Count { get; }</code></td>
+        <td class="summary">Current number of entries (includes not-yet-swept expired entries). May be approximate under high concurrency.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/ICache.cs#L13">ICache.cs:13</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">void Dispose()</code></td>
+        <td class="summary">Release resources (stops background sweep timer).</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/ICache.cs#L15">ICache.cs:15</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CacheEntryOptions
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="tag tag-record">sealed record</span>
+    <h2>CacheEntryOptions</h2>
+  </div>
+  <div class="namespace-label">Cache.Core</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>Signature</th>
+        <th>Summary</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="kind kind-ctor">ctor</span></td>
+        <td><code class="sig">CacheEntryOptions(<br>TimeSpan? AbsoluteTtl = null,<br>TimeSpan? SlidingTtl = null)</code></td>
+        <td class="summary">Positional record constructor. Both parameters are optional — omit a parameter to inherit from the cache default.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/CacheEntryOptions.cs#L3">CacheEntryOptions.cs:3</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">TimeSpan? AbsoluteTtl { get; init; }</code></td>
+        <td class="summary">Hard ceiling on entry lifetime. Must be &gt; 0 when provided. Falls back to <code>TtlCache</code> constructor <code>defaultTtl</code> if <code>null</code>.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/CacheEntryOptions.cs#L4">CacheEntryOptions.cs:4</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">TimeSpan? SlidingTtl { get; init; }</code></td>
+        <td class="summary">Each hit resets the deadline by this window (capped by <code>AbsoluteTtl</code>). Cannot be negative. <code>null</code>/<code>Zero</code> → no sliding.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Core/CacheEntryOptions.cs#L5">CacheEntryOptions.cs:5</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TtlCache<TValue>
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="tag tag-class">sealed class</span>
+    <h2>TtlCache&lt;TValue&gt;</h2>
+  </div>
+  <div class="namespace-label">Cache.Adapters.Memory &nbsp;·&nbsp; implements ICache&lt;string, TValue&gt;, IDisposable</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>Signature</th>
+        <th>Summary</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="kind kind-ctor">ctor</span></td>
+        <td><code class="sig">TtlCache(TimeSpan defaultTtl,<br>TimeSpan sweepInterval)</code></td>
+        <td class="summary">
+          Creates the cache and immediately starts the background sweep timer.<br>
+          <span class="throws">Throws <code>ArgumentOutOfRangeException</code> if either arg ≤ zero.</span>
+        </td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L36">TtlCache.cs:36</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">void Set(string key, TValue value,<br>CacheEntryOptions? options = null)</code></td>
+        <td class="summary">
+          Add or overwrite entry. When <code>SlidingTtl</code> is set the initial deadline is <code>min(sliding, absolute)</code>; TryGet refreshes it on read.<br>
+          <span class="throws">Throws <code>ArgumentNullException</code> if key is null.</span><br>
+          <span class="throws">Throws <code>ArgumentOutOfRangeException</code> for zero/negative TTLs.</span>
+        </td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L71">TtlCache.cs:71</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">bool TryGet(string key, out TValue value)</code></td>
+        <td class="summary">
+          Cache lookup. Expired entries return <code>false</code>. On a sliding-TTL hit with &lt;⅓ window remaining, atomically extends the deadline.
+          <br><span class="note">⚙ Uses <code>Stopwatch.GetTimestamp()</code> (monotonic) — not wall-clock safe across machine hibernation.</span>
+        </td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L99">TtlCache.cs:99</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">bool Remove(string key)</code></td>
+        <td class="summary">Explicit eviction. Returns <code>true</code> if removed; increments <code>Removes</code> metric.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L59">TtlCache.cs:59</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">int Count { get; }</code></td>
+        <td class="summary">Live count from the underlying <code>ConcurrentDictionary</code> — includes entries expired but not yet swept.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L126">TtlCache.cs:126</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">CacheMetricsSnapshot GetMetricsSnapshot()</code></td>
+        <td class="summary">Atomic read of all counters. Returns a value-type snapshot; safe to call from any thread.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L50">TtlCache.cs:50</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">int SweepExpiredEntries()</code></td>
+        <td class="summary">
+          Scan all entries and remove expired ones. Returns count of removed entries.<br>
+          <span class="note">⚙ Called automatically by the background timer. Exposed for testing / manual control. Non-reentrant guard is in the private wrapper.</span>
+        </td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L146">TtlCache.cs:146</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-method">method</span></td>
+        <td><code class="sig">void Dispose()</code></td>
+        <td class="summary">Stops and disposes the sweep timer. Call when done to avoid leaked threads.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L162">TtlCache.cs:162</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CacheMetricsSnapshot
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="tag tag-struct">readonly struct</span>
+    <h2>CacheMetricsSnapshot</h2>
+  </div>
+  <div class="namespace-label">Cache.Adapters.Memory</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>Signature</th>
+        <th>Summary</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">long Hits { get; init; }</code></td>
+        <td class="summary">Total successful <code>TryGet</code> calls since cache creation.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L172">TtlCache.cs:172</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">long Misses { get; init; }</code></td>
+        <td class="summary">Total <code>TryGet</code> calls that returned <code>false</code> (not found or expired).</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L173">TtlCache.cs:173</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">long Sets { get; init; }</code></td>
+        <td class="summary">Total <code>Set</code> calls (inserts + updates).</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L174">TtlCache.cs:174</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">long Removes { get; init; }</code></td>
+        <td class="summary">Total explicit <code>Remove</code> calls that actually removed an entry.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L175">TtlCache.cs:175</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">long ExpiredRemovals { get; init; }</code></td>
+        <td class="summary">Total entries removed by the background sweep.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L176">TtlCache.cs:176</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">int Count { get; init; }</code></td>
+        <td class="summary">Entry count at the moment the snapshot was taken.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L177">TtlCache.cs:177</a></td>
+      </tr>
+      <tr>
+        <td><span class="kind kind-prop">prop</span></td>
+        <td><code class="sig">double HitRate { get; } <em style="color:var(--muted)">(computed)</em></code></td>
+        <td class="summary"><code>Hits / (Hits + Misses)</code>. Returns <code>0.0</code> when no reads have occurred yet.</td>
+        <td><a class="linksym" href="file:///C:/Users/aleks/src/Talks/demo-sandbox/CSharpCache/Cache.Adapters.Memory/TtlCache.cs#L179">TtlCache.cs:179</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  Generated 2026-05-27 · <code>/mnt/c/Users/aleks/src/Talks/demo-sandbox/CSharpCache</code>
+</footer>
+
+</body>
+</html>

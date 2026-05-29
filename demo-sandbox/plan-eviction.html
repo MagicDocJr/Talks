@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sliding-Window TTL — Eviction Approaches</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #2a2f42;
+    --text: #cdd6f4;
+    --muted: #7c859e;
+    --accent: #89b4fa;
+    --green: #a6e3a1;
+    --red: #f38ba8;
+    --amber: #f9a825;
+    --amber-bg: #1e1a0e;
+    --amber-border: #6b4c00;
+    --tag-bg: #1e2235;
+    --tag-text: #89b4fa;
+    --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    --sans: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    min-height: 100vh;
+    padding: 2.5rem;
+  }
+
+  header {
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+  }
+
+  header h1 {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  header p {
+    color: var(--muted);
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .legend span { display: flex; align-items: center; gap: 0.4rem; }
+
+  .legend .dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .dot-amber { background: var(--amber); }
+  .dot-default { background: var(--border); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.35rem 1.4rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    transition: border-color 0.15s;
+  }
+
+  .card:hover { border-color: #3d4560; }
+
+  .card.recommended {
+    background: var(--amber-bg);
+    border-color: var(--amber-border);
+    box-shadow: 0 0 0 1px var(--amber-border);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .card-title {
+    font-size: 0.97rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+
+  .card.recommended .card-title { color: var(--amber); }
+
+  .recommended-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--amber);
+    color: #1a1000;
+    border-radius: 4px;
+    padding: 2px 7px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .approach-line {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+    border-left: 2px solid var(--border);
+    padding-left: 0.7rem;
+    line-height: 1.45;
+  }
+
+  .card.recommended .approach-line { border-color: var(--amber-border); }
+
+  .pros-cons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .pros, .cons {
+    background: var(--tag-bg);
+    border-radius: 6px;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .card.recommended .pros,
+  .card.recommended .cons {
+    background: rgba(249,168,37,0.07);
+  }
+
+  .pros-label, .cons-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .pros-label { color: var(--green); }
+  .cons-label { color: var(--red); }
+
+  .pros ul, .cons ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .pros li, .cons li {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text);
+    padding-left: 1em;
+    position: relative;
+  }
+
+  .pros li::before { content: "+"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .cons li::before { content: "−"; position: absolute; left: 0; color: var(--red); font-weight: 700; }
+
+  .footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .card.recommended .footer-row { border-color: var(--amber-border); }
+
+  .files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-tag {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border: 1px solid #2a3050;
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  .card.recommended .file-tag {
+    background: rgba(249,168,37,0.1);
+    color: var(--amber);
+    border-color: var(--amber-border);
+  }
+
+  .complexity-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .complexity-label {
+    font-size: 0.63rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .pips {
+    display: flex;
+    gap: 3px;
+  }
+
+  .pip {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+
+  .pip.on { background: var(--accent); }
+  .card.recommended .pip.on { background: var(--amber); }
+
+  @media (max-width: 1100px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; }
+    body { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sliding-Window TTL — Eviction Approaches</h1>
+  <p>Repo: <code>CSharpCache</code> · Baseline: <code>TtlCache&lt;TValue&gt;</code> with 1/3-threshold lazy refresh in <code>TryGet</code></p>
+  <div class="legend">
+    <span><span class="dot dot-amber"></span>Recommended</span>
+    <span><span class="dot dot-default"></span>Alternative</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- 1: Eager Update on Every Read — RECOMMENDED -->
+  <div class="card recommended">
+    <div class="card-header">
+      <div class="card-title">Eager Update on Every Read</div>
+      <div class="recommended-badge">★ Recommended</div>
+    </div>
+    <div class="approach-line">
+      Remove the 1/3 guard; call <code>TryUpdate</code> on every hit where <code>SlidingWindowTicks &gt; 0</code>, capping at <code>AbsoluteCapTicks</code>.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>True sliding-window semantics — deadline resets on every access</li>
+          <li>Minimal delta from existing code</li>
+          <li>No new data structures or threads</li>
+          <li>CAS failure is safe: other thread set the same deadline</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li>Extra CAS write on every hot-path read</li>
+          <li>Contention cost grows with concurrency on the same key</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2: Configurable Threshold -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Configurable Refresh Threshold</div>
+    </div>
+    <div class="approach-line">
+      Promote the hardcoded <code>1/3</code> to a constructor parameter <code>refreshFraction</code> (0–1); expose it via <code>CacheEntryOptions</code> per-entry.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>Zero new code paths — purely parametric</li>
+          <li>Backward-compatible default (keep 1/3)</li>
+          <li>Callers can tune per-key (0 = always refresh)</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li>Still approximate — not a true sliding window</li>
+          <li>Adds surface area to <code>CacheEntryOptions</code></li>
+          <li>Correct value is workload-dependent; easy to misuse</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+        <span class="file-tag">CacheEntryOptions.cs</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3: Parallel Last-Access Dictionary -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Parallel Last-Access Dictionary</div>
+    </div>
+    <div class="approach-line">
+      Keep a second <code>ConcurrentDictionary&lt;string, long&gt;</code> for last-access timestamps; <code>TryGet</code> updates only that dictionary, and <code>SweepExpiredEntries</code> computes effective deadlines at eviction time.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>No struct replacement in the hot path — one atomic long write</li>
+          <li>Sweep is the single source of eviction truth</li>
+          <li>Easy to snapshot last-access for observability</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li>Two dictionaries must stay in sync (remove from both)</li>
+          <li>Sweep logic grows more complex</li>
+          <li>Extra memory per entry; two lookups in sweep</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4: Mutable Class Entry with Volatile Field -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Mutable Class Entry + Volatile Deadline</div>
+    </div>
+    <div class="approach-line">
+      Convert <code>CacheItem&lt;TValue&gt;</code> from a <code>readonly struct</code> to a class; declare <code>DeadlineTicks</code> as <code>volatile long</code>; <code>TryGet</code> updates it with <code>Interlocked.Exchange</code> — no CAS retry loop.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>Eliminates CAS retry contention entirely</li>
+          <li>Single atomic write — simplest concurrency model</li>
+          <li>No dictionary replacement; same key stays in place</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li>Heap allocation per entry — GC pressure on large caches</li>
+          <li>Struct → class change breaks the existing immutability guarantee</li>
+          <li>Requires reasoning about torn reads on 32-bit targets</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5: Channel-based Async Refresh -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Channel-based Async Refresh</div>
+    </div>
+    <div class="approach-line">
+      <code>TryGet</code> posts <code>(key, newDeadline)</code> to a bounded <code>Channel&lt;T&gt;</code>; a single background <code>Task</code> drains the channel and applies <code>TryUpdate</code> — zero contention on the read hot path.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>Hot read path is write-free — highest read throughput</li>
+          <li>Can batch updates and coalesce duplicate keys</li>
+          <li>Natural backpressure via bounded channel capacity</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li>Eventual consistency — entry may expire before update applies</li>
+          <li>Dropped events when channel is full under burst load</li>
+          <li>Task lifecycle + CancellationToken wiring adds complexity</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+        <span class="file-tag">ICache.cs</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6: Min-Heap Priority Queue -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Min-Heap Priority Queue Sweep</div>
+    </div>
+    <div class="approach-line">
+      Replace the O(n) timer sweep with a <code>PriorityQueue&lt;string, long&gt;</code> ordered by next deadline; <code>Set</code>/<code>TryGet</code> enqueue updated entries; sweep dequeues only entries whose deadline has passed using lazy deletion.
+    </div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pros-label">Pros</div>
+        <ul>
+          <li>O(log n) sweep — avoids full-scan cost on large caches</li>
+          <li>Sweep interval can be dynamically adjusted to next expiry</li>
+          <li>Efficient for sparse or long-TTL workloads</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-label">Cons</div>
+        <ul>
+          <li><code>PriorityQueue</code> is not thread-safe — requires a dedicated lock</li>
+          <li>No native key-update support → lazy deletion adds stale entries</li>
+          <li>Significant refactor touching sweep, Set, and TryGet paths</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-row">
+      <div class="files">
+        <span class="file-tag">TtlCache.cs</span>
+        <span class="file-tag">Cache.Core.csproj</span>
+      </div>
+      <div class="complexity-block">
+        <span class="complexity-label">Complexity</span>
+        <div class="pips">
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
